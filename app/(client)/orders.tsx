@@ -161,7 +161,7 @@ export default function ClientOrdersScreen() {
                           <View style={{ marginTop: 15 }}>
                               <Text style={styles.infoLabel}>Комментарий</Text>
                               <Text style={{ color: theme.colors.grey2, fontStyle: 'italic', marginTop: 5 }}>
-                                  "{selectedOrder.message}"
+                                  {selectedOrder.message}
                               </Text>
                           </View>
                       )}

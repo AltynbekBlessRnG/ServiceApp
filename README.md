@@ -1,81 +1,134 @@
-# ServiceApp - AI-Powered Service Marketplace
+# ServiceApp
 
+Cross-platform Expo app for a service marketplace with three roles: client, specialist, and venue.  
+The current MVP target is the `client + specialist` flow on top of Supabase.
 
-https://github.com/user-attachments/assets/059f3f77-2cd2-43e6-a4b3-df5cc3b184fa
+## What Works In This Repo
 
+- Expo Router based mobile app structure
+- Supabase auth and profile routing
+- Specialist profile editing, schedule, portfolio, bookings, and chats
+- Client category browsing, AI-assisted search with fallback, specialist details, bookings, favorites, and chats
+- New Supabase schema contract in [`schema.sql`](./schema.sql)
 
+## Environment
 
-A full-stack cross-platform mobile application built with **React Native** and **Supabase**. This project is a complex marketplace ecosystem that connects clients, individual specialists, and venues (businesses). It features an innovative AI-driven search engine and a real-time communication system.
+Copy [`.env.example`](./.env.example) to `.env` and fill in:
 
-> **Note:** The project was developed with a focus on high performance, clean architecture (file-based routing), and modern UI/UX trends.
-
-## 🚀 Key Features
-
-### 🤖 AI-Driven Search Engine
-*   **Intent Analysis:** Integrated **Google Gemini AI** to analyze user search queries.
-*   **Smart Filtering:** The AI extracts category, city, and price range from natural language (e.g., "Find a barber in Almaty under 5000 TG") to provide highly relevant results.
-
-### 👥 Multi-Role Ecosystem
-*   **Client App:** Browse categories, use AI search, book appointments, and leave reviews.
-*   **Specialist App:** Manage a professional profile, portfolio (images/videos), and work schedule.
-*   **Venue App:** Business-focused features for salons, shops, or restaurants with location-based services (Maps integration).
-
-### ⚡ Real-time Features & Backend
-*   **Instant Messaging:** Real-time personal and group (category-based) chats powered by **Supabase Realtime**.
-*   **Booking System:** Complex scheduling logic with manual time blocking and automated status updates.
-*   **Media Management:** Optimized media uploader with on-the-fly image compression and video thumbnail generation.
-*   **Push Notifications:** Automated alerts for booking confirmations and new messages.
-
-### 🎨 Premium UI/UX
-*   **Deep Void Theme:** A custom-designed dark theme with neon accents for a modern look.
-*   **Reels Feed:** A TikTok-style vertical video feed for specialists to showcase their work.
-*   **Haptic Feedback:** Enhanced user interaction with tactile responses.
-
-## 🛠 Tech Stack
-
-*   **Frontend:** React Native (Expo), TypeScript.
-*   **Navigation:** Expo Router (File-based routing).
-*   **State & Auth:** Supabase Auth & Context API.
-*   **Backend/Database:** Supabase (PostgreSQL) with Row Level Security (RLS).
-*   **AI Integration:** Google Generative AI (Gemini SDK).
-*   **Styling:** React Native Elements, Expo Linear Gradient.
-*   **Storage:** Supabase Storage for high-res assets.
-
-## 📂 Project Structure
-
-```text
-app/
-├── (auth)/         # Authentication flow (Login, Register, Role Selection)
-├── (client)/       # Client-side features (Home, AI Search, Booking)
-├── (specialist)/   # Specialist dashboard (Schedule, Portfolio, Orders)
-├── (venue)/        # Business/Venue management
-├── chat/           # Real-time messaging implementation
-├── lib/            # Shared utilities (Supabase client, AI logic, Uploader)
-└── providers/      # Context providers (Auth, Theme)
+```env
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+EXPO_PUBLIC_API_KEY=your_gemini_api_key
 ```
 
-## 🛠 Installation & Setup
+`EXPO_PUBLIC_API_KEY` is optional for the app to boot. If it is missing, AI search falls back to normal text search.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/altynbek8/ServiceApp.git
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file and add your credentials:
-   ```env
-   EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-   EXPO_PUBLIC_API_KEY=your_gemini_api_key
-   ```
-4. Start the development server:
-   ```bash
-   npx expo start
-   ```
+## Recommended Toolchain
 
----
+- Node.js `20.19.4+` recommended by the current React Native / Metro stack
+- npm `10+`
 
-## 👨‍💻 Author
-**Altynbek Temirkhan**  
+The app can install on slightly older Node 20 builds, but you may see engine warnings.
+
+## Setup
+
+```bash
+npm install
+```
+
+Apply the database schema to a fresh Supabase project:
+
+```sql
+-- run the contents of schema.sql in the Supabase SQL editor
+```
+
+Then start the app:
+
+```bash
+npm run start
+```
+
+## Daily Development
+
+For normal development with hot reload, use:
+
+```bash
+npm run dev
+```
+
+Useful variants:
+
+```bash
+npm run dev:lan
+npm run dev:android
+npm run dev:ios
+npm run dev:web
+```
+
+This keeps the regular Expo development flow, but you no longer need to type `npx expo start` manually.
+
+## Development Build
+
+This project is now configured for a real Expo development client with `expo-dev-client`.
+
+Build a development client for Android:
+
+```bash
+npm run devbuild:android
+```
+
+Other options:
+
+```bash
+npm run devbuild:ios
+npm run devbuild:all
+```
+
+After the development build is installed on your phone or emulator:
+
+```bash
+npm run dev
+```
+
+Then open the installed development build app instead of Expo Go.
+
+## Preview Build Without Metro
+
+If you want an installable app build that opens without a running Expo dev server, use the preview profile:
+
+```bash
+npm run preview:android
+npm run preview:ios
+```
+
+What this gives you:
+
+- `preview:android` builds an internal Android APK through EAS
+- `preview:ios` builds an internal iOS preview build through EAS
+- preview builds do not depend on `expo start` or Metro
+
+You can also build both platforms in one go:
+
+```bash
+npm run preview:all
+```
+
+If EAS asks for authentication on this machine, log in once:
+
+```bash
+npx eas login
+```
+
+## Verification
+
+```bash
+npm test
+npm run lint
+node .\node_modules\typescript\bin\tsc --noEmit
+```
+
+## Notes
+
+- The MVP schema assumes a fresh Supabase project.
+- `venue` and `admin` remain in the codebase, but the most stable path is currently `client + specialist`.
+- Push notifications are optional for MVP. In-app notifications are the required baseline.

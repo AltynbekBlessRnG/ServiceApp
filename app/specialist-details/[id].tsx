@@ -95,7 +95,7 @@ export default function SpecialistDetailScreen() {
 
   const handleShare = async () => {
       const name = specialist?.full_name || initialName;
-      await Share.share({ message: `Посмотри мастера: ${name} в Hui Znaet.` });
+      await Share.share({ message: `Посмотри специалиста: ${name} в ServiceApp.` });
   };
 
   async function onDateSelect(day: any) {
@@ -146,7 +146,7 @@ export default function SpecialistDetailScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         {/* HERO: Показываем картинку сразу, или placeholder */}
         <Image 
-            source={{ uri: heroImage || 'https://via.placeholder.com/800x600/1A1625/FFFFFF?text=PROZANGO' }} 
+            source={{ uri: heroImage || 'https://via.placeholder.com/800x600/1A1625/FFFFFF?text=ServiceApp' }} 
             style={styles.heroImg} 
             contentFit="cover"
             transition={300}

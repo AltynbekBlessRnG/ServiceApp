@@ -2,7 +2,16 @@ import { Button, Icon, Input, Text, useTheme } from '@rneui/themed';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
 import { uploadFileToSupabase } from '../../lib/uploader';
@@ -11,256 +20,268 @@ import { useAuth } from '../../providers/AuthProvider';
 export default function EditProfileScreen() {
   const { user, isLoading: authLoading } = useAuth();
   const { theme } = useTheme();
-  
+
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
-  
-  // Данные профиля
   const [bio, setBio] = useState('');
   const [experience, setExperience] = useState('');
   const [price, setPrice] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  // Категории и Навыки
-  const [categories, setCategories] = useState<{id: number, name: string}[]>([]);
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  
-  const [subcategories, setSubcategories] = useState<{id: number, name: string}[]>([]);
-  const [selectedTags, setSelectedTags] = useState<number[]>([]); // ID выбранных навыков
+  const [subcategories, setSubcategories] = useState<{ id: number; name: string }[]>([]);
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
 
-  // 1. ЗАГРУЗКА ДАННЫХ ПРИ СТАРТЕ
-  useEffect(() => { 
-      if (!authLoading && user) loadData(); 
+  useEffect(() => {
+    if (!authLoading && user) {
+      loadData();
+    }
   }, [authLoading, user]);
 
-  // 2. КОГДА МЕНЯЕТСЯ КАТЕГОРИЯ -> ГРУЗИМ ТЕГИ
   useEffect(() => {
-      if (selectedCategory) {
-          fetchSubcategories(selectedCategory);
-      } else {
-          setSubcategories([]);
-      }
+    if (selectedCategory) {
+      fetchSubcategories(selectedCategory);
+    } else {
+      setSubcategories([]);
+    }
   }, [selectedCategory]);
 
   async function loadData() {
     try {
-      // Грузим список главных категорий
-      const { data: catData } = await supabase.from('categories').select('id, name').eq('type', 'specialist').order('name');
+      const { data: catData } = await supabase
+        .from('categories')
+        .select('id, name')
+        .eq('type', 'specialist')
+        .order('name');
       if (catData) setCategories(catData);
-      
+
       if (!user) return;
-      
-      // Грузим профиль
+
       const { data: profile } = await supabase.from('specialist_profiles').select('*').eq('id', user.id).maybeSingle();
-      if (profile) { 
-          setBio(profile.bio || ''); 
-          setExperience(profile.experience_years?.toString() || ''); 
-          setPrice(profile.price_start?.toString() || ''); 
-          setSelectedCategory(profile.category_id); 
+      if (profile) {
+        setBio(profile.bio || '');
+        setExperience(profile.experience_years?.toString() || '');
+        setPrice(profile.price_start?.toString() || '');
+        setSelectedCategory(profile.category_id);
       }
 
-      // Грузим уже выбранные теги (Навыки)
-      const { data: tags } = await supabase.from('specialist_subcategories').select('subcategory_id').eq('specialist_id', user.id);
+      const { data: tags } = await supabase
+        .from('specialist_subcategories')
+        .select('subcategory_id')
+        .eq('specialist_id', user.id);
       if (tags) {
-          setSelectedTags(tags.map(t => t.subcategory_id));
+        setSelectedTags(tags.map((tag) => tag.subcategory_id));
       }
-      
-      // Аватарка
+
       const { data: mainProfile } = await supabase.from('profiles').select('avatar_url').eq('id', user.id).single();
       if (mainProfile) setAvatarUrl(mainProfile.avatar_url);
-
-    } catch (e) { 
-        console.log('Error loading data:', e); 
-    } finally { 
-        setFetching(false); 
+    } catch (error) {
+      console.log('Error loading data:', error);
+    } finally {
+      setFetching(false);
     }
   }
 
-  async function fetchSubcategories(catId: number) {
-      const { data } = await supabase.from('subcategories').select('*').eq('category_id', catId);
-      if (data) setSubcategories(data);
+  async function fetchSubcategories(categoryId: number) {
+    const { data } = await supabase.from('subcategories').select('*').eq('category_id', categoryId);
+    if (data) setSubcategories(data);
   }
 
-  // Логика выбора тегов (Тоггл)
   const toggleTag = (id: number) => {
-      if (selectedTags.includes(id)) {
-          setSelectedTags(prev => prev.filter(t => t !== id));
-      } else {
-          setSelectedTags(prev => [...prev, id]);
-      }
+    if (selectedTags.includes(id)) {
+      setSelectedTags((prev) => prev.filter((tagId) => tagId !== id));
+    } else {
+      setSelectedTags((prev) => [...prev, id]);
+    }
   };
 
   async function saveProfile() {
     if (!user) return;
     setLoading(true);
-    
-    try {
-        // 1. Обновляем основной профиль
-        const updates = { 
-            id: user.id, 
-            bio: bio.trim(), 
-            experience_years: parseInt(experience) || 0, 
-            price_start: parseInt(price) || 0, 
-            category_id: selectedCategory 
-        };
-        
-        await supabase.from('profiles').update({ role: 'specialist' }).eq('id', user.id);
-        const { error } = await supabase.from('specialist_profiles').upsert(updates);
-        if (error) throw error;
 
-        // 2. Обновляем ТЕГИ (Удаляем старые -> Пишем новые)
-        // Это самый надежный способ синхронизации
-        await supabase.from('specialist_subcategories').delete().eq('specialist_id', user.id);
-        
-        if (selectedTags.length > 0) {
-            const tagRows = selectedTags.map(tagId => ({
-                specialist_id: user.id,
-                subcategory_id: tagId
-            }));
-            const { error: tagError } = await supabase.from('specialist_subcategories').insert(tagRows);
-            if (tagError) throw tagError;
-        }
-        
-        Alert.alert('Успех', 'Ваша анкета обновлена!');
-        router.back();
-    } catch (err: any) {
-        Alert.alert('Ошибка сохранения', err.message);
+    try {
+      const updates = {
+        id: user.id,
+        bio: bio.trim(),
+        experience_years: parseInt(experience, 10) || 0,
+        price_start: parseInt(price, 10) || 0,
+        category_id: selectedCategory,
+      };
+
+      await supabase.from('profiles').update({ role: 'specialist' }).eq('id', user.id);
+      const { error } = await supabase.from('specialist_profiles').upsert(updates);
+      if (error) throw error;
+
+      await supabase.from('specialist_subcategories').delete().eq('specialist_id', user.id);
+
+      if (selectedTags.length > 0) {
+        const tagRows = selectedTags.map((tagId) => ({
+          specialist_id: user.id,
+          subcategory_id: tagId,
+        }));
+        const { error: tagError } = await supabase.from('specialist_subcategories').insert(tagRows);
+        if (tagError) throw tagError;
+      }
+
+      Alert.alert('Успех', 'Ваша анкета обновлена.');
+      router.back();
+    } catch (error: any) {
+      Alert.alert('Ошибка сохранения', error.message);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   }
 
   async function pickAvatar() {
-    // ... (код загрузки аватара без изменений) ...
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5 });
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
     if (!result.canceled) {
-        setLoading(true);
-        try {
-            const fileName = `${user?.id}/avatar_${Date.now()}.jpg`;
-            const publicUrl = await uploadFileToSupabase('avatars', result.assets[0].uri, fileName);
-            await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user?.id);
-            setAvatarUrl(publicUrl);
-        } catch (err: any) {
-            Alert.alert('Ошибка', err.message);
-        } finally {
-            setLoading(false);
-        }
+      setLoading(true);
+      try {
+        const fileName = `${user?.id}/avatar_${Date.now()}.jpg`;
+        const publicUrl = await uploadFileToSupabase('avatars', result.assets[0].uri, fileName);
+        await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user?.id);
+        setAvatarUrl(publicUrl);
+      } catch (error: any) {
+        Alert.alert('Ошибка', error.message);
+      } finally {
+        setLoading(false);
+      }
     }
   }
 
-  if (authLoading || fetching) return <View style={styles.center}><ActivityIndicator size="large" color={theme.colors.primary} /></View>;
+  if (authLoading || fetching) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        
         <View style={styles.header}>
-           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-               <Icon name="arrow-left" type="feather" color="#fff" />
-           </TouchableOpacity>
-           <Text h4 style={{ color: '#fff', fontWeight: '800' }}>Анкета мастера</Text>
-           <View style={{ width: 40 }} />
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Icon name="arrow-left" type="feather" color="#fff" />
+          </TouchableOpacity>
+          <Text h4 style={{ color: '#fff', fontWeight: '800' }}>
+            Анкета мастера
+          </Text>
+          <View style={{ width: 40 }} />
         </View>
 
         <TouchableOpacity onPress={pickAvatar} style={styles.avatarSection}>
-            <UserAvatar avatarUrl={avatarUrl} size={100} />
-            <Text style={{ color: theme.colors.primary, marginTop: 10, fontWeight: '700' }}>Изменить фото</Text>
+          <UserAvatar avatarUrl={avatarUrl} size={100} />
+          <Text style={{ color: theme.colors.primary, marginTop: 10, fontWeight: '700' }}>Изменить фото</Text>
         </TouchableOpacity>
 
-        {/* 1. ГЛАВНАЯ КАТЕГОРИЯ */}
         <Text style={styles.label}>ОСНОВНАЯ СФЕРА</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-                {categories.map((cat) => {
-                    const isActive = selectedCategory === cat.id;
-                    return (
-                        <TouchableOpacity 
-                            key={cat.id} 
-                            onPress={() => { setSelectedCategory(cat.id); setSelectedTags([]); }} // Сброс тегов при смене категории
-                            style={[styles.chip, isActive ? { backgroundColor: theme.colors.primary } : styles.inactiveChip]}
-                        >
-                            <Text style={[styles.chipText, { color: isActive ? '#fff' : '#A09BAF' }]}>{cat.name}</Text>
-                        </TouchableOpacity>
-                    )
-                })}
-            </View>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {categories.map((category) => {
+              const isActive = selectedCategory === category.id;
+              return (
+                <TouchableOpacity
+                  key={category.id}
+                  onPress={() => {
+                    setSelectedCategory(category.id);
+                    setSelectedTags([]);
+                  }}
+                  style={[styles.chip, isActive ? { backgroundColor: theme.colors.primary } : styles.inactiveChip]}
+                >
+                  <Text style={[styles.chipText, { color: isActive ? '#fff' : '#A09BAF' }]}>{category.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </ScrollView>
 
-        {/* 2. ПОДКАТЕГОРИИ (ТЕГИ) */}
         {subcategories.length > 0 && (
-            <View style={{ marginBottom: 30 }}>
-                <Text style={styles.label}>ВАШИ НАВЫКИ (Выберите несколько)</Text>
-                <View style={styles.tagsContainer}>
-                    {subcategories.map((sub) => {
-                        const isSelected = selectedTags.includes(sub.id);
-                        return (
-                            <TouchableOpacity 
-                                key={sub.id}
-                                onPress={() => toggleTag(sub.id)}
-                                style={[
-                                    styles.tagChip, 
-                                    isSelected ? { backgroundColor: 'rgba(0, 255, 204, 0.2)', borderColor: '#00FFCC' } : { borderColor: '#2D2638' }
-                                ]}
-                            >
-                                <Text style={{ color: isSelected ? '#00FFCC' : '#A09BAF', fontWeight: '600', fontSize: 13 }}>
-                                    {sub.name}
-                                </Text>
-                                {isSelected && <Icon name="check" type="feather" size={14} color="#00FFCC" style={{ marginLeft: 5 }} />}
-                            </TouchableOpacity>
-                        )
-                    })}
-                </View>
+          <View style={{ marginBottom: 30 }}>
+            <Text style={styles.label}>ВАШИ НАВЫКИ</Text>
+            <View style={styles.tagsContainer}>
+              {subcategories.map((subcategory) => {
+                const isSelected = selectedTags.includes(subcategory.id);
+                return (
+                  <TouchableOpacity
+                    key={subcategory.id}
+                    onPress={() => toggleTag(subcategory.id)}
+                    style={[
+                      styles.tagChip,
+                      isSelected
+                        ? { backgroundColor: 'rgba(0, 255, 204, 0.2)', borderColor: '#00FFCC' }
+                        : { borderColor: '#2D2638' },
+                    ]}
+                  >
+                    <Text style={{ color: isSelected ? '#00FFCC' : '#A09BAF', fontWeight: '600', fontSize: 13 }}>
+                      {subcategory.name}
+                    </Text>
+                    {isSelected && <Icon name="check" type="feather" size={14} color="#00FFCC" style={{ marginLeft: 5 }} />}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
+          </View>
         )}
 
-        {/* 3. AI ПОДСКАЗКА */}
         <View style={styles.aiBox}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-                <Icon name="zap" type="feather" color="#FFD700" size={18} />
-                <Text style={{ color: '#FFD700', fontWeight: 'bold', marginLeft: 8 }}>СОВЕТ ОТ ИИ</Text>
-            </View>
-            <Text style={{ color: '#E2E8F0', fontSize: 13, lineHeight: 18 }}>
-                Напишите о себе максимально подробно. Наш ИИ читает это поле! 
-                Если вы напишете "Знаю React и TypeScript", то клиент, который ищет "Frontend на React", увидит вас первым.
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
+            <Icon name="zap" type="feather" color="#FFD700" size={18} />
+            <Text style={{ color: '#FFD700', fontWeight: 'bold', marginLeft: 8 }}>СОВЕТ ОТ ИИ</Text>
+          </View>
+          <Text style={{ color: '#E2E8F0', fontSize: 13, lineHeight: 18 }}>
+            Напишите о себе максимально подробно. ИИ читает это поле и использует его в поиске. Чем точнее вы
+            опишете опыт, специализацию и инструменты, тем легче клиенту будет найти именно вас.
+          </Text>
         </View>
 
         <View style={styles.form}>
-            <Input 
-                placeholder="Пример: Опыт 5 лет, делаю быстро, гарантия..."
-                multiline numberOfLines={5} 
-                value={bio} onChangeText={setBio} 
-                inputContainerStyle={[styles.textArea, { backgroundColor: '#1A1625', borderColor: '#2D2638' }]}
-                inputStyle={{ textAlignVertical: 'top', color: '#fff', paddingTop: 10 }}
-            />
-            
-            <View style={styles.row}>
-                <View style={{flex: 1, marginRight: 10}}>
-                    <Input 
-                        label="Опыт (лет)" placeholder="3" 
-                        keyboardType="numeric" 
-                        value={experience} onChangeText={setExperience} 
-                    />
-                </View>
-                <View style={{flex: 1}}>
-                    <Input 
-                        label="Цена от (₸)" placeholder="5000" 
-                        keyboardType="numeric" 
-                        value={price} onChangeText={setPrice} 
-                    />
-                </View>
-            </View>
+          <Input
+            placeholder="Пример: опыт 5 лет, работаю быстро, специализируюсь на свадебном макияже..."
+            multiline
+            numberOfLines={5}
+            value={bio}
+            onChangeText={setBio}
+            inputContainerStyle={[styles.textArea, { backgroundColor: '#1A1625', borderColor: '#2D2638' }]}
+            inputStyle={{ textAlignVertical: 'top', color: '#fff', paddingTop: 10 }}
+          />
 
-            <Button 
-                title="Сохранить анкету" 
-                onPress={saveProfile} 
-                loading={loading} 
-                containerStyle={{ marginTop: 20, marginBottom: 50 }}
-                buttonStyle={{ borderRadius: 16, height: 55, backgroundColor: theme.colors.primary }}
-                titleStyle={{ fontWeight: '800' }}
-            />
+          <View style={styles.row}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Input
+                label="Опыт (лет)"
+                placeholder="3"
+                keyboardType="numeric"
+                value={experience}
+                onChangeText={setExperience}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Input
+                label="Цена от (₸)"
+                placeholder="5000"
+                keyboardType="numeric"
+                value={price}
+                onChangeText={setPrice}
+              />
+            </View>
+          </View>
+
+          <Button
+            title="Сохранить анкету"
+            onPress={saveProfile}
+            loading={loading}
+            containerStyle={{ marginTop: 20, marginBottom: 50 }}
+            buttonStyle={{ borderRadius: 16, height: 55, backgroundColor: theme.colors.primary }}
+            titleStyle={{ fontWeight: '800' }}
+          />
         </View>
-        
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -272,28 +293,29 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 30 },
   backBtn: { padding: 10, backgroundColor: '#1A1625', borderRadius: 12 },
   avatarSection: { alignItems: 'center', marginBottom: 30 },
-  
   label: { fontSize: 12, fontWeight: '800', marginLeft: 5, marginBottom: 12, textTransform: 'uppercase', color: '#6B6675', letterSpacing: 1 },
-  
   chip: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, marginRight: 0 },
   inactiveChip: { backgroundColor: '#1A1625', borderWidth: 1, borderColor: '#2D2638' },
   chipText: { fontWeight: '700', fontSize: 13 },
-  
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tagChip: { 
-      flexDirection: 'row', alignItems: 'center',
-      paddingHorizontal: 14, paddingVertical: 8, 
-      borderRadius: 20, borderWidth: 1, backgroundColor: '#1A1625' 
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    backgroundColor: '#1A1625',
   },
-
   aiBox: {
-      backgroundColor: 'rgba(255, 215, 0, 0.1)', // Gold transparent
-      padding: 15, borderRadius: 16,
-      borderWidth: 1, borderColor: 'rgba(255, 215, 0, 0.3)',
-      marginBottom: 20
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    padding: 15,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    marginBottom: 20,
   },
-
   form: { gap: 0 },
   textArea: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 10, height: 120 },
-  row: { flexDirection: 'row' }
+  row: { flexDirection: 'row' },
 });

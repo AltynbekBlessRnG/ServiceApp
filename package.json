@@ -4,11 +4,23 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
+    "dev": "expo start --clear --tunnel",
+    "dev:lan": "expo start --clear --lan",
+    "dev:android": "expo start --clear --android",
+    "dev:ios": "expo start --clear --ios",
+    "dev:web": "expo start --clear --web",
+    "devbuild:android": "eas build --platform android --profile development",
+    "devbuild:ios": "eas build --platform ios --profile development",
+    "devbuild:all": "eas build --platform all --profile development",
+    "preview:android": "eas build --platform android --profile preview",
+    "preview:ios": "eas build --platform ios --profile preview",
+    "preview:all": "eas build --platform all --profile preview",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "tsx tests/run-tests.ts"
   },
   "dependencies": {
     "@expo/ngrok": "^4.1.3",
@@ -26,6 +38,7 @@
     "expo-av": "~16.0.8",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.10",
+    "expo-dev-client": "~6.0.21",
     "expo-device": "~8.0.9",
     "expo-file-system": "^19.0.19",
     "expo-font": "~14.0.9",
@@ -47,6 +60,7 @@
     "expo-video-thumbnails": "~10.0.8",
     "expo-web-browser": "~15.0.9",
     "lucide-react-native": "^0.555.0",
+    "pg": "^8.21.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
@@ -62,8 +76,11 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "eas-cli": "^19.0.8",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "supabase": "^2.101.0",
+    "tsx": "^4.22.3",
     "typescript": "~5.9.2"
   },
   "private": true

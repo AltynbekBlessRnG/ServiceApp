@@ -1,5 +1,3 @@
-// types/database.ts
-
 export type UserRole = 'client' | 'specialist' | 'venue' | 'admin';
 
 export interface Profile {
@@ -10,6 +8,7 @@ export interface Profile {
   city: string | null;
   phone: string | null;
   push_token: string | null;
+  balance: number;
   is_admin: boolean;
   is_banned: boolean;
   created_at: string;
@@ -22,6 +21,7 @@ export interface Category {
   image_url: string | null;
   bg_color: string | null;
 }
+
 export interface Subcategory {
   id: number;
   category_id: number;
@@ -34,9 +34,8 @@ export interface SpecialistProfile {
   experience_years: number;
   price_start: number;
   category_id: number | null;
-  profiles?: Profile; 
+  profiles?: Profile;
   categories?: Category;
-  // Мы будем подгружать теги отдельным запросом
 }
 
 export interface VenueProfile {
@@ -71,21 +70,27 @@ export interface Message {
 }
 
 export interface FavoriteItem {
-    id: string;
-    target_id: string;
-    user_id: string;
-    specialist_profiles?: SpecialistProfile;
-    venue_profiles?: VenueProfile;
+  id: string;
+  target_id: string;
+  user_id: string;
+  specialist_profiles?: SpecialistProfile;
+  venue_profiles?: VenueProfile;
 }
+
 export interface PortfolioItem {
   id: string;
   specialist_id: string;
   file_url: string;
+  thumbnail_url: string | null;
   file_type: 'image' | 'video';
+  in_feed: boolean;
+  is_pinned: boolean;
+  is_hero: boolean;
   created_at: string;
 }
+
 export interface CategoryMessage {
-  id: number;
+  id: string;
   category_id: number;
   sender_id: string;
   content: string;
@@ -94,4 +99,12 @@ export interface CategoryMessage {
     full_name: string | null;
     avatar_url: string | null;
   };
+}
+
+export interface BusyTime {
+  id: string;
+  specialist_id: string;
+  date: string;
+  time: string;
+  created_at: string;
 }

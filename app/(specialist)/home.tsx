@@ -131,7 +131,7 @@ export default function SpecialistHome() {
         {item.message && item.message.trim() !== '' && (
             <View style={styles.msgBox}>
                 <Icon name="file-text" type="feather" size={14} color={theme.colors.grey2} style={{marginTop: 2}} />
-                <Text style={styles.msgText}>"{item.message}"</Text>
+                <Text style={styles.msgText}>{item.message}</Text>
             </View>
         )}
 

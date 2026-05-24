@@ -48,7 +48,7 @@ export default function GlobalSearchScreen() {
       }
 
       // Дополнительный поиск по тегам, если ничего не нашлось по жестким фильтрам
-      const { data, error } = await dbQuery.limit(20);
+      const { data } = await dbQuery.limit(20);
       
       if (data && data.length > 0) {
         setResults(data);

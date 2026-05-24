@@ -10,11 +10,11 @@ interface AppHeaderProps {
   rightComponent?: React.ReactNode;
 }
 
-export const AppHeader: React.FC<AppHeaderProps> = ({ 
-  title = "Hui Znaet", // <--- ИЗМЕНИЛ ЗДЕСЬ
-  showBack = true, 
+export const AppHeader: React.FC<AppHeaderProps> = ({
+  title = 'ServiceApp',
+  showBack = true,
   showSettings = true,
-  rightComponent 
+  rightComponent,
 }) => {
   const { theme } = useTheme();
 
@@ -22,32 +22,35 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     <View style={styles.header}>
       <View style={styles.side}>
         {showBack && (
-          <TouchableOpacity 
-            onPress={() => router.back()} 
+          <TouchableOpacity
+            onPress={() => router.back()}
             style={[styles.btn, { backgroundColor: theme.colors.grey0, borderColor: theme.colors.grey1 }]}
           >
             <Icon name="arrow-left" type="feather" color="#fff" size={20} />
           </TouchableOpacity>
         )}
       </View>
-      
+
       <View style={styles.center}>
-        <Text style={[styles.title, { color: '#fff', textShadowColor: theme.colors.primary, textShadowRadius: 10 }]} numberOfLines={1}>
-            {title}
+        <Text
+          style={[styles.title, { color: '#fff', textShadowColor: theme.colors.primary, textShadowRadius: 10 }]}
+          numberOfLines={1}
+        >
+          {title}
         </Text>
       </View>
 
       <View style={[styles.side, { alignItems: 'flex-end' }]}>
-        {rightComponent ? rightComponent : (
-            showSettings && (
-                <TouchableOpacity 
-                    onPress={() => router.push('/settings')} 
-                    style={[styles.btn, { backgroundColor: theme.colors.grey0, borderColor: theme.colors.grey1 }]}
-                >
-                    <Icon name="settings" type="feather" color="#fff" size={18} />
-                </TouchableOpacity>
-            )
-        )}
+        {rightComponent
+          ? rightComponent
+          : showSettings && (
+              <TouchableOpacity
+                onPress={() => router.push('/settings')}
+                style={[styles.btn, { backgroundColor: theme.colors.grey0, borderColor: theme.colors.grey1 }]}
+              >
+                <Icon name="settings" type="feather" color="#fff" size={18} />
+              </TouchableOpacity>
+            )}
       </View>
     </View>
   );
@@ -65,11 +68,11 @@ const styles = StyleSheet.create({
   side: { width: 45 },
   center: { flex: 1, alignItems: 'center' },
   title: { fontSize: 18, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
-  btn: { 
-    width: 44, 
-    height: 44, 
-    borderRadius: 14, 
-    justifyContent: 'center', 
+  btn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
   },

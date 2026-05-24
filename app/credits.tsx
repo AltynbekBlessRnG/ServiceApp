@@ -9,18 +9,18 @@ export default function CreditsScreen() {
   const insets = useSafeAreaInsets();
 
   const openLink = (url: string) => {
-    Linking.openURL(url).catch(err => console.error("Couldn't load page", err));
+    Linking.openURL(url).catch((error) => console.error("Couldn't load page", error));
   };
 
   const FeatureItem = ({ icon, title, desc, color }: any) => (
     <View style={[styles.featureItem, { backgroundColor: theme.colors.grey0 }]}>
-        <View style={[styles.iconBox, { backgroundColor: color + '20' }]}>
-            <Icon name={icon} type="feather" color={color} size={24} />
-        </View>
-        <View style={{ flex: 1 }}>
-            <Text style={[styles.featureTitle, { color: theme.colors.black }]}>{title}</Text>
-            <Text style={styles.featureDesc}>{desc}</Text>
-        </View>
+      <View style={[styles.iconBox, { backgroundColor: `${color}20` }]}>
+        <Icon name={icon} type="feather" color={color} size={24} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.featureTitle, { color: theme.colors.black }]}>{title}</Text>
+        <Text style={styles.featureDesc}>{desc}</Text>
+      </View>
     </View>
   );
 
@@ -29,81 +29,74 @@ export default function CreditsScreen() {
       <AppHeader title="О приложении" />
 
       <ScrollView contentContainerStyle={styles.content}>
-        
-        {/* 1. ЛОГОТИП И ВЕРСИЯ */}
         <View style={styles.logoSection}>
-            <View style={[styles.logoBox, { backgroundColor: theme.colors.primary, shadowColor: theme.colors.primary }]}>
-                {/* Можем поменять иконку на знак вопроса, раз "Hui Znaet" :) */}
-                <Icon name="help-circle" type="feather" color="#fff" size={40} />
-            </View>
-            
-            
-            <Text h3 style={{ color: theme.colors.black, marginTop: 20, fontWeight: '900', letterSpacing: 1 }}>
-                Hui Znaet
-            </Text>
-            
-            <Text style={styles.version}>Версия 1.0.0 (Alpha)</Text>
-            <Text style={styles.slogan}>Сервис, который знает всё (наверное)</Text>
+          <View style={[styles.logoBox, { backgroundColor: theme.colors.primary, shadowColor: theme.colors.primary }]}>
+            <Icon name="sparkles" type="feather" color="#fff" size={40} />
+          </View>
+
+          <Text h3 style={{ color: theme.colors.black, marginTop: 20, fontWeight: '900', letterSpacing: 1 }}>
+            ServiceApp
+          </Text>
+
+          <Text style={styles.version}>Версия 1.0.0 (Alpha)</Text>
+          <Text style={styles.slogan}>Сервис поиска и записи к специалистам</Text>
         </View>
 
-        {/* 2. КЛЮЧЕВЫЕ ФИШКИ */}
         <Text style={[styles.sectionHeader, { color: theme.colors.grey2 }]}>ВОЗМОЖНОСТИ</Text>
-        
-        <FeatureItem 
-            icon="cpu" 
-            title="AI Поиск" 
-            desc="Искусственный интеллект найдет услугу, даже если ты сам не знаешь, что ищешь." 
-            color="#8A2BE2" 
+
+        <FeatureItem
+          icon="cpu"
+          title="AI-поиск"
+          desc="Помогает найти услугу по свободному запросу, а при недоступности ИИ работает обычный поиск."
+          color="#8A2BE2"
         />
-        <FeatureItem 
-            icon="calendar" 
-            title="Запись онлайн" 
-            desc="Записывайся к мастерам, пока другие звонят." 
-            color="#00FFCC" 
+        <FeatureItem
+          icon="calendar"
+          title="Онлайн-запись"
+          desc="Клиент видит доступное время и оставляет заявку без звонков и переписки вне приложения."
+          color="#00FFCC"
         />
-        <FeatureItem 
-            icon="message-circle" 
-            title="Чаты" 
-            desc="Общение с мастерами и заведениями напрямую." 
-            color="#FFD700" 
+        <FeatureItem
+          icon="message-circle"
+          title="Чаты"
+          desc="Личные и категорийные чаты для связи между клиентами и специалистами."
+          color="#FFD700"
         />
 
-        {/* 3. ТЕХНОЛОГИИ */}
         <Text style={[styles.sectionHeader, { color: theme.colors.grey2, marginTop: 20 }]}>СТЕК</Text>
         <View style={styles.techContainer}>
-            {['React Native', 'Expo', 'Supabase', 'TypeScript', 'Gemini AI'].map((tech, i) => (
-                <View key={i} style={[styles.chip, { backgroundColor: theme.colors.grey1, borderColor: theme.colors.grey3 }]}>
-                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>{tech}</Text>
-                </View>
-            ))}
-        </View>
-
-        {/* 4. РАЗРАБОТЧИК */}
-        <View style={styles.divider} />
-        
-        <View style={[styles.devCard, { borderColor: theme.colors.primary }]}>
-            <Text style={styles.devLabel}>CREATED BY</Text>
-            <Text h4 style={{ color: theme.colors.black, fontWeight: '900', marginBottom: 5 }}>
-                Altynbek Temirkhan
-            </Text>
-            <Text style={{ color: theme.colors.primary, fontWeight: '700', marginBottom: 15 }}>
-                Full Stack Engineer
-            </Text>
-            <Text style={{ color: theme.colors.grey2, textAlign: 'center', lineHeight: 20, fontSize: 13 }}>
-                "Делаю красиво, быстро и технологично. Даже если название пока рабочее."
-            </Text>
-
-            <View style={styles.socialRow}>
-                <TouchableOpacity onPress={() => openLink('https://github.com')} style={styles.socialBtn}>
-                    <Icon name="github" type="feather" color="#fff" size={20} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => openLink('https://linkedin.com')} style={styles.socialBtn}>
-                    <Icon name="linkedin" type="feather" color="#fff" size={20} />
-                </TouchableOpacity>
+          {['React Native', 'Expo', 'Supabase', 'TypeScript', 'Gemini AI'].map((tech, index) => (
+            <View key={index} style={[styles.chip, { backgroundColor: theme.colors.grey1, borderColor: theme.colors.grey3 }]}>
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>{tech}</Text>
             </View>
+          ))}
         </View>
 
-        <Text style={styles.footerText}>© 2024 Hui Znaet Inc.</Text>
+        <View style={styles.divider} />
+
+        <View style={[styles.devCard, { borderColor: theme.colors.primary }]}>
+          <Text style={styles.devLabel}>CREATED BY</Text>
+          <Text h4 style={{ color: theme.colors.black, fontWeight: '900', marginBottom: 5 }}>
+            Altynbek Temirkhan
+          </Text>
+          <Text style={{ color: theme.colors.primary, fontWeight: '700', marginBottom: 15 }}>
+            Full Stack Engineer
+          </Text>
+          <Text style={{ color: theme.colors.grey2, textAlign: 'center', lineHeight: 20, fontSize: 13 }}>
+            Делаю красиво, быстро и технологично.
+          </Text>
+
+          <View style={styles.socialRow}>
+            <TouchableOpacity onPress={() => openLink('https://github.com')} style={styles.socialBtn}>
+              <Icon name="github" type="feather" color="#fff" size={20} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => openLink('https://linkedin.com')} style={styles.socialBtn}>
+              <Icon name="linkedin" type="feather" color="#fff" size={20} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <Text style={styles.footerText}>© 2024 ServiceApp</Text>
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>
@@ -114,11 +107,17 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 25 },
   logoSection: { alignItems: 'center', marginBottom: 40 },
-  logoBox: { 
-      width: 90, height: 90, borderRadius: 30, 
-      justifyContent: 'center', alignItems: 'center', 
-      shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10,
-      transform: [{ rotate: '-5deg' }]
+  logoBox: {
+    width: 90,
+    height: 90,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+    transform: [{ rotate: '-5deg' }],
   },
   version: { color: 'gray', marginTop: 5, fontWeight: '600', fontSize: 12 },
   slogan: { color: '#00FFCC', marginTop: 10, fontWeight: '600', fontSize: 14, letterSpacing: 0.5 },
@@ -130,14 +129,25 @@ const styles = StyleSheet.create({
   techContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1 },
   divider: { height: 1, backgroundColor: '#2D2638', marginVertical: 40 },
-  devCard: { 
-      padding: 30, borderRadius: 24, 
-      alignItems: 'center', 
-      borderWidth: 1, borderStyle: 'dashed',
-      backgroundColor: 'rgba(138, 43, 226, 0.05)' 
+  devCard: {
+    padding: 30,
+    borderRadius: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    backgroundColor: 'rgba(138, 43, 226, 0.05)',
   },
   devLabel: { fontSize: 10, fontWeight: '900', color: 'gray', marginBottom: 10, letterSpacing: 2 },
   socialRow: { flexDirection: 'row', marginTop: 20, gap: 15 },
-  socialBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#1A1625', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#2D2638' },
-  footerText: { textAlign: 'center', color: '#333', marginTop: 30, fontSize: 12 }
+  socialBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1A1625',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2D2638',
+  },
+  footerText: { textAlign: 'center', color: '#333', marginTop: 30, fontSize: 12 },
 });
