@@ -28,7 +28,7 @@ export default function Index() {
 
     try {
       if (user.user_metadata?.role) {
-        router.replace(resolveHomeRoute(user.user_metadata.role));
+        router.replace(resolveHomeRoute(user.user_metadata.role) as never);
         return;
       }
 
@@ -44,7 +44,7 @@ export default function Index() {
       }
 
       await supabase.auth.updateUser({ data: { role: profile.role, city: profile.city } });
-      router.replace(resolveHomeRoute(profile.role));
+      router.replace(resolveHomeRoute(profile.role) as never);
     } catch (error) {
       console.error('Root auth routing error:', error);
       router.replace('/(auth)/role-select');

@@ -81,12 +81,19 @@ export default function CategoryChatScreen() {
         </View>
       </View>
 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
       {loading ? <ActivityIndicator style={{ flex: 1 }} /> : (
         <FlatList
           inverted
           data={messages}
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={{ padding: 20 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           renderItem={({ item }) => {
             const isMine = item.sender_id === user?.id;
             return (
@@ -102,7 +109,6 @@ export default function CategoryChatScreen() {
         />
       )}
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
         <View style={[styles.inputArea, { paddingBottom: insets.bottom + 10 }]}>
           <TextInput 
             style={[styles.input, { backgroundColor: theme.colors.grey0, color: theme.colors.black }]} 

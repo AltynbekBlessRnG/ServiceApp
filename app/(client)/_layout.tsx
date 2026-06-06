@@ -41,6 +41,7 @@ export default function ClientLayout() {
       <Tabs.Screen name="category-results" options={{ href: null }} />
       <Tabs.Screen name="ai-search" options={{ href: null }} />
       <Tabs.Screen name="add-review" options={{ href: null }} />
+      <Tabs.Screen name="alakol" options={{ href: null }} />
     </Tabs>
   );
 }

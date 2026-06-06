@@ -259,7 +259,7 @@ export default function SpecialistDetailScreen() {
 
       {/* MODAL BOOKING */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
               <View style={[styles.modalContent, { backgroundColor: '#1A1625' }]}>
                   <Text h4 style={{ textAlign: 'center', marginBottom: 15, color: '#fff' }}>Дата и время</Text>
                   <Calendar onDayPress={onDateSelect} markedDates={{ ...busyDates, [selectedDate]: { selected: true, selectedColor: theme.colors.primary } }} theme={{ calendarBackground: 'transparent', dayTextColor: '#fff', monthTextColor: '#fff', arrowColor: theme.colors.primary, todayTextColor: '#00FFCC' }} />

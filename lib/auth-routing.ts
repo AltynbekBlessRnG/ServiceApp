@@ -1,6 +1,7 @@
 export type AppRole = 'client' | 'specialist' | 'venue' | 'admin' | null | undefined;
+export type HomeRoute = '/(client)/home' | '/(specialist)/home' | '/(venue)/home' | '/(auth)/role-select';
 
-export function resolveHomeRoute(role: AppRole): string {
+export function resolveHomeRoute(role: AppRole): HomeRoute {
   switch (role) {
     case 'client':
       return '/(client)/home';

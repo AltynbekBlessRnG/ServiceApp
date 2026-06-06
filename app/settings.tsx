@@ -107,10 +107,10 @@ export default function SettingsScreen() {
   if (authLoading) return <View style={styles.center}><ActivityIndicator size="large" color="#8A2BE2" /></View>;
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top}}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={{flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top}}>
       <AppHeader title="Настройки" />
       
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
         
         <View style={styles.avatarSection}>
             <TouchableOpacity onPress={pickImage} style={styles.avatarWrapper}>
@@ -162,7 +162,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F0C15' },
-  container: { padding: 20 },
+  container: { padding: 20, paddingBottom: 40 },
   avatarSection: { alignItems: 'center', marginBottom: 30 },
   avatarWrapper: { position: 'relative' },
   editBadge: { position: 'absolute', bottom: 0, right: 0, padding: 8, borderRadius: 20, backgroundColor: '#8A2BE2', borderWidth: 3, borderColor: '#0F0C15' },

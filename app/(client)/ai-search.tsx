@@ -2,7 +2,7 @@
 import { Icon, Text, useTheme } from '@rneui/themed';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Keyboard, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProfileCard } from '../../components/ProfileCard';
 import { analyzeSearchIntent, SearchIntent } from '../../lib/gemini';
@@ -70,7 +70,11 @@ export default function GlobalSearchScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
         <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                 <Icon name="arrow-left" type="feather" color={theme.colors.black} />
@@ -105,6 +109,8 @@ export default function GlobalSearchScreen() {
                 <ProfileCard item={item} type={item.role === 'venue' ? 'venue' : 'specialist'} />
             )}
             contentContainerStyle={{ padding: 20 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
             ListEmptyComponent={
                 !loading ? (
                 <View style={styles.empty}>
@@ -116,7 +122,7 @@ export default function GlobalSearchScreen() {
                 ) : null
             }
         />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -1,26 +1,22 @@
-import { Button, Icon, Input, Text, useTheme } from '@rneui/themed';
+import { Button, CheckBox, Icon, Input, Text, useTheme } from '@rneui/themed';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
 import { uploadFileToSupabase } from '../../lib/uploader';
 import { useAuth } from '../../providers/AuthProvider';
 
+const ALAKOL_ZONES = [
+  { label: 'Акши', value: 'akshi' },
+  { label: 'Коктума', value: 'koktuma' },
+  { label: 'Ушарал', value: 'usharal' },
+] as const;
+
 export default function EditProfileScreen() {
   const { user, isLoading: authLoading } = useAuth();
   const { theme } = useTheme();
-
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [bio, setBio] = useState('');
@@ -31,11 +27,11 @@ export default function EditProfileScreen() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [subcategories, setSubcategories] = useState<{ id: number; name: string }[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
+  const [worksInAlakol, setWorksInAlakol] = useState(false);
+  const [alokolZone, setAlakolZone] = useState<'akshi' | 'koktuma' | 'usharal' | null>(null);
 
   useEffect(() => {
-    if (!authLoading && user) {
-      loadData();
-    }
+    if (!authLoading && user) loadData();
   }, [authLoading, user]);
 
   useEffect(() => {
@@ -48,13 +44,8 @@ export default function EditProfileScreen() {
 
   async function loadData() {
     try {
-      const { data: catData } = await supabase
-        .from('categories')
-        .select('id, name')
-        .eq('type', 'specialist')
-        .order('name');
+      const { data: catData } = await supabase.from('categories').select('id, name').eq('type', 'specialist').order('name');
       if (catData) setCategories(catData);
-
       if (!user) return;
 
       const { data: profile } = await supabase.from('specialist_profiles').select('*').eq('id', user.id).maybeSingle();
@@ -65,16 +56,15 @@ export default function EditProfileScreen() {
         setSelectedCategory(profile.category_id);
       }
 
-      const { data: tags } = await supabase
-        .from('specialist_subcategories')
-        .select('subcategory_id')
-        .eq('specialist_id', user.id);
-      if (tags) {
-        setSelectedTags(tags.map((tag) => tag.subcategory_id));
-      }
+      const { data: tags } = await supabase.from('specialist_subcategories').select('subcategory_id').eq('specialist_id', user.id);
+      if (tags) setSelectedTags(tags.map((tag) => tag.subcategory_id));
 
-      const { data: mainProfile } = await supabase.from('profiles').select('avatar_url').eq('id', user.id).single();
-      if (mainProfile) setAvatarUrl(mainProfile.avatar_url);
+      const { data: mainProfile } = await supabase.from('profiles').select('avatar_url, works_in_alakol, alakol_zone').eq('id', user.id).single();
+      if (mainProfile) {
+        setAvatarUrl(mainProfile.avatar_url);
+        setWorksInAlakol(Boolean(mainProfile.works_in_alakol));
+        setAlakolZone(mainProfile.alakol_zone || null);
+      }
     } catch (error) {
       console.log('Error loading data:', error);
     } finally {
@@ -98,7 +88,6 @@ export default function EditProfileScreen() {
   async function saveProfile() {
     if (!user) return;
     setLoading(true);
-
     try {
       const updates = {
         id: user.id,
@@ -108,22 +97,22 @@ export default function EditProfileScreen() {
         category_id: selectedCategory,
       };
 
-      await supabase.from('profiles').update({ role: 'specialist' }).eq('id', user.id);
+      await supabase
+        .from('profiles')
+        .update({ role: 'specialist', works_in_alakol: worksInAlakol, alakol_zone: worksInAlakol ? alokolZone : null })
+        .eq('id', user.id);
+
       const { error } = await supabase.from('specialist_profiles').upsert(updates);
       if (error) throw error;
 
       await supabase.from('specialist_subcategories').delete().eq('specialist_id', user.id);
-
       if (selectedTags.length > 0) {
-        const tagRows = selectedTags.map((tagId) => ({
-          specialist_id: user.id,
-          subcategory_id: tagId,
-        }));
+        const tagRows = selectedTags.map((tagId) => ({ specialist_id: user.id, subcategory_id: tagId }));
         const { error: tagError } = await supabase.from('specialist_subcategories').insert(tagRows);
         if (tagError) throw tagError;
       }
 
-      Alert.alert('Успех', 'Ваша анкета обновлена.');
+      Alert.alert('Успех', 'Анкета мастера обновлена');
       router.back();
     } catch (error: any) {
       Alert.alert('Ошибка сохранения', error.message);
@@ -156,23 +145,17 @@ export default function EditProfileScreen() {
   }
 
   if (authLoading || fetching) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
+    return <View style={styles.center}><ActivityIndicator size="large" color={theme.colors.primary} /></View>;
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Icon name="arrow-left" type="feather" color="#fff" />
           </TouchableOpacity>
-          <Text h4 style={{ color: '#fff', fontWeight: '800' }}>
-            Анкета мастера
-          </Text>
+          <Text h4 style={{ color: '#fff', fontWeight: '800' }}>Анкета мастера</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -180,6 +163,35 @@ export default function EditProfileScreen() {
           <UserAvatar avatarUrl={avatarUrl} size={100} />
           <Text style={{ color: theme.colors.primary, marginTop: 10, fontWeight: '700' }}>Изменить фото</Text>
         </TouchableOpacity>
+
+        <CheckBox
+          title="Работаю на Алаколе в этом сезоне"
+          checked={worksInAlakol}
+          onPress={() => setWorksInAlakol((prev) => !prev)}
+          containerStyle={styles.checkItem}
+          textStyle={styles.checkText}
+          checkedColor={theme.colors.secondary}
+        />
+
+        {worksInAlakol && (
+          <>
+            <Text style={styles.label}>ЗОНА АЛАКОЛЯ</Text>
+            <View style={styles.zoneRow}>
+              {ALAKOL_ZONES.map((item) => {
+                const isActive = alokolZone === item.value;
+                return (
+                  <TouchableOpacity
+                    key={item.value}
+                    onPress={() => setAlakolZone(item.value)}
+                    style={[styles.chip, isActive ? { backgroundColor: theme.colors.secondary } : styles.inactiveChip]}
+                  >
+                    <Text style={[styles.chipText, { color: isActive ? '#000' : '#A09BAF' }]}>{item.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         <Text style={styles.label}>ОСНОВНАЯ СФЕРА</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
@@ -214,15 +226,10 @@ export default function EditProfileScreen() {
                     onPress={() => toggleTag(subcategory.id)}
                     style={[
                       styles.tagChip,
-                      isSelected
-                        ? { backgroundColor: 'rgba(0, 255, 204, 0.2)', borderColor: '#00FFCC' }
-                        : { borderColor: '#2D2638' },
+                      isSelected ? { backgroundColor: 'rgba(0, 255, 204, 0.2)', borderColor: '#00FFCC' } : { borderColor: '#2D2638' },
                     ]}
                   >
-                    <Text style={{ color: isSelected ? '#00FFCC' : '#A09BAF', fontWeight: '600', fontSize: 13 }}>
-                      {subcategory.name}
-                    </Text>
-                    {isSelected && <Icon name="check" type="feather" size={14} color="#00FFCC" style={{ marginLeft: 5 }} />}
+                    <Text style={{ color: isSelected ? '#00FFCC' : '#A09BAF', fontWeight: '600', fontSize: 13 }}>{subcategory.name}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -230,58 +237,26 @@ export default function EditProfileScreen() {
           </View>
         )}
 
-        <View style={styles.aiBox}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-            <Icon name="zap" type="feather" color="#FFD700" size={18} />
-            <Text style={{ color: '#FFD700', fontWeight: 'bold', marginLeft: 8 }}>СОВЕТ ОТ ИИ</Text>
+        <Input
+          placeholder="Опишите ваш опыт, специализацию, формат работы..."
+          multiline
+          numberOfLines={5}
+          value={bio}
+          onChangeText={setBio}
+          inputContainerStyle={[styles.textArea, { backgroundColor: '#1A1625', borderColor: '#2D2638' }]}
+          inputStyle={{ textAlignVertical: 'top', color: '#fff', paddingTop: 10 }}
+        />
+
+        <View style={styles.row}>
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <Input label="Опыт (лет)" placeholder="3" keyboardType="numeric" value={experience} onChangeText={setExperience} />
           </View>
-          <Text style={{ color: '#E2E8F0', fontSize: 13, lineHeight: 18 }}>
-            Напишите о себе максимально подробно. ИИ читает это поле и использует его в поиске. Чем точнее вы
-            опишете опыт, специализацию и инструменты, тем легче клиенту будет найти именно вас.
-          </Text>
+          <View style={{ flex: 1 }}>
+            <Input label="Цена от (₸)" placeholder="5000" keyboardType="numeric" value={price} onChangeText={setPrice} />
+          </View>
         </View>
 
-        <View style={styles.form}>
-          <Input
-            placeholder="Пример: опыт 5 лет, работаю быстро, специализируюсь на свадебном макияже..."
-            multiline
-            numberOfLines={5}
-            value={bio}
-            onChangeText={setBio}
-            inputContainerStyle={[styles.textArea, { backgroundColor: '#1A1625', borderColor: '#2D2638' }]}
-            inputStyle={{ textAlignVertical: 'top', color: '#fff', paddingTop: 10 }}
-          />
-
-          <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: 10 }}>
-              <Input
-                label="Опыт (лет)"
-                placeholder="3"
-                keyboardType="numeric"
-                value={experience}
-                onChangeText={setExperience}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Input
-                label="Цена от (₸)"
-                placeholder="5000"
-                keyboardType="numeric"
-                value={price}
-                onChangeText={setPrice}
-              />
-            </View>
-          </View>
-
-          <Button
-            title="Сохранить анкету"
-            onPress={saveProfile}
-            loading={loading}
-            containerStyle={{ marginTop: 20, marginBottom: 50 }}
-            buttonStyle={{ borderRadius: 16, height: 55, backgroundColor: theme.colors.primary }}
-            titleStyle={{ fontWeight: '800' }}
-          />
-        </View>
+        <Button title="Сохранить анкету" onPress={saveProfile} loading={loading} containerStyle={{ marginTop: 20, marginBottom: 50 }} buttonStyle={{ borderRadius: 16, height: 55, backgroundColor: theme.colors.primary }} titleStyle={{ fontWeight: '800' }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -297,25 +272,11 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, marginRight: 0 },
   inactiveChip: { backgroundColor: '#1A1625', borderWidth: 1, borderColor: '#2D2638' },
   chipText: { fontWeight: '700', fontSize: 13 },
+  zoneRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tagChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    backgroundColor: '#1A1625',
-  },
-  aiBox: {
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    padding: 15,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
-    marginBottom: 20,
-  },
-  form: { gap: 0 },
+  tagChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, backgroundColor: '#1A1625' },
   textArea: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 10, height: 120 },
   row: { flexDirection: 'row' },
+  checkItem: { backgroundColor: 'transparent', borderWidth: 0, paddingHorizontal: 0, margin: 0, marginBottom: 16 },
+  checkText: { color: '#fff', fontWeight: '700' },
 });

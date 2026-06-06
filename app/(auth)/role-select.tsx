@@ -38,7 +38,7 @@ export default function RoleSelectScreen() {
       }
 
       await supabase.auth.updateUser({ data: { role, city: userCity } });
-      router.replace(resolveHomeRoute(role));
+      router.replace(resolveHomeRoute(role) as never);
     } catch (error: any) {
       Alert.alert('Ошибка', error.message);
       setLoading(false);

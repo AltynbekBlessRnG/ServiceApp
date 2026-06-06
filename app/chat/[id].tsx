@@ -127,6 +127,11 @@ export default function PersonalChatScreen() {
             </View>
         </View>
 
+        <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
         <FlatList 
             inverted
             data={messages} 
@@ -134,13 +139,11 @@ export default function PersonalChatScreen() {
             renderItem={renderMessage}
             contentContainerStyle={{ padding: 20 }}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         />
 
         {/* INPUT */}
-        <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-        >
             <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 10, backgroundColor: theme.colors.background, borderTopColor: theme.colors.grey1 }]}>
                 <View style={[styles.inputWrapper, { backgroundColor: theme.colors.grey0, borderColor: theme.colors.grey1 }]}>
                     <TextInput 
