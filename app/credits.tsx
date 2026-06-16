@@ -35,7 +35,7 @@ export default function CreditsScreen() {
           </View>
 
           <Text h3 style={{ color: theme.colors.black, marginTop: 20, fontWeight: '900', letterSpacing: 1 }}>
-            ServiceApp
+            Taptym
           </Text>
 
           <Text style={styles.version}>Версия 1.0.0 (Alpha)</Text>
@@ -75,15 +75,28 @@ export default function CreditsScreen() {
         <View style={styles.divider} />
 
         <View style={[styles.devCard, { borderColor: theme.colors.primary }]}>
+          <Text style={styles.devLabel}>FOUNDER</Text>
+          <Text h4 style={{ color: theme.colors.black, fontWeight: '900', marginBottom: 5 }}>
+            Шалгимбаев Ернар Донесбайулы
+          </Text>
+          <Text style={{ color: theme.colors.primary, fontWeight: '700', marginBottom: 15 }}>
+            Основатель
+          </Text>
+          <Text style={{ color: theme.colors.grey2, textAlign: 'center', lineHeight: 20, fontSize: 13 }}>
+            Идея и создание Taptym
+          </Text>
+        </View>
+
+        <View style={[styles.devCard, { borderColor: theme.colors.secondary, marginTop: 15 }]}>
           <Text style={styles.devLabel}>CREATED BY</Text>
           <Text h4 style={{ color: theme.colors.black, fontWeight: '900', marginBottom: 5 }}>
             Altynbek Temirkhan
           </Text>
-          <Text style={{ color: theme.colors.primary, fontWeight: '700', marginBottom: 15 }}>
+          <Text style={{ color: theme.colors.secondary, fontWeight: '700', marginBottom: 15 }}>
             Full Stack Engineer
           </Text>
           <Text style={{ color: theme.colors.grey2, textAlign: 'center', lineHeight: 20, fontSize: 13 }}>
-            Делаю красиво, быстро и технологично.
+            Разработка и дизайн
           </Text>
 
           <View style={styles.socialRow}>
@@ -96,7 +109,7 @@ export default function CreditsScreen() {
           </View>
         </View>
 
-        <Text style={styles.footerText}>© 2024 ServiceApp</Text>
+        <Text style={styles.footerText}>© 2026 Taptym</Text>
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>

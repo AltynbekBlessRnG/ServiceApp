@@ -175,7 +175,7 @@ export default function VenueDetailScreen() {
 
     try {
       await Share.share({
-        message: `Посмотрите объект на Алаколе: ${venue.profiles?.full_name || 'Зона отдыха'}\n${venue.address || 'Адрес уточняется'}\nServiceApp`,
+        message: `Посмотрите объект на Алаколе: ${venue.profiles?.full_name || 'Зона отдыха'}\n${venue.address || 'Адрес уточняется'}\nTaptym`,
       });
     } catch (error) {
       console.log(error);

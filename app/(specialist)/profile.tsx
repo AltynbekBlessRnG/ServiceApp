@@ -71,9 +71,9 @@ export default function SpecialistProfileScreen() {
         {/* Логотип */}
         <View style={styles.brandingContainer}>
             <View style={styles.brandingBox}>
-                 <Text style={styles.brandingText}>Hui Znaet</Text>
+                 <Text style={styles.brandingText}>Taptym</Text>
             </View>
-            <Text style={{color: '#6B6675', fontSize: 10, marginTop: 5}}>SPECIALIST APP</Text>
+            <Text style={{color: '#6B6675', fontSize: 10, marginTop: 5}}>Для специалистов</Text>
         </View>
 
         {/* Аватарка и Инфо */}

@@ -17,8 +17,8 @@ export default function AdminDashboard() {
 
   useFocusEffect(useCallback(() => { fetchUsers(); }, []));
 
-  // Проверка на админа (хотя лучше это делать на уровне layout или middleware)
-  if (user?.email !== 'temirhan_a@bk.ru') { 
+  const isAdmin = user?.user_metadata?.role === 'admin' || user?.user_metadata?.is_admin === true;
+  if (!isAdmin) {
       return (
         <View style={styles.center}>
             <Text h4>Доступ запрещен</Text>

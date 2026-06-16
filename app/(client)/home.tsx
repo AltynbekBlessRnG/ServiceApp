@@ -41,7 +41,7 @@ const CATEGORY_ORDER = [
 
 const isReadableCategoryName = (name: string) => {
   if (!name) return false;
-  return !(name.includes('Ð') || name.includes('Ñ') || name.includes('?'));
+  return name.trim().length > 0;
 };
 
 const getCategoryStyle = (name: string) => {

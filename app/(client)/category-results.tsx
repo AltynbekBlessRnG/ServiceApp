@@ -26,11 +26,7 @@ export default function CategoryResultsScreen() {
   const [sortModalVisible, setSortModalVisible] = useState(false);
 
   useEffect(() => {
-      console.log(`🔍 ОТКРЫТА КАТЕГОРИЯ: ${name} (ID: ${categoryId}, Type: ${type})`);
-      if (isNaN(categoryId)) {
-          console.error("❌ ОШИБКА: ID категории не число!");
-          return;
-      }
+      if (isNaN(categoryId)) return;
       fetchTags();
   }, [categoryId]);
 
@@ -48,7 +44,6 @@ export default function CategoryResultsScreen() {
     setLoading(true);
     try {
         if (type === 'specialist') {
-            console.log(`📡 Запрос специалистов для категории ID=${categoryId}...`);
 
             // 1. Фильтр по тегам (если есть)
             let validSpecialistIds: string[] | null = null;
@@ -81,12 +76,7 @@ export default function CategoryResultsScreen() {
 
             const { data, error } = await query;
             
-            if (error) {
-                console.error("❌ Ошибка запроса:", error);
-                throw error;
-            }
-
-            console.log(`✅ Найдено: ${data?.length} чел.`);
+            if (error) throw error;
 
             const formatted = data.map((item: any) => ({
                 id: item.id,
@@ -106,16 +96,45 @@ export default function CategoryResultsScreen() {
             let query = supabase
                 .from('venue_profiles')
                 .select('*, profiles(*), categories(name)')
-                .eq('category_id', categoryId); // Фильтр для заведений
+                .eq('category_id', categoryId);
             
+            if (sortBy === 'price_asc') query = query.order('price_from', { ascending: true });
+            if (sortBy === 'price_desc') query = query.order('price_from', { ascending: false });
+
             const { data } = await query;
+
+            // Получаем рейтинги для заведений
+            const venueIds = data?.map((v: any) => v.id) || [];
+            let ratingMap: Record<string, number> = {};
+            if (venueIds.length > 0) {
+                const { data: reviews } = await supabase
+                    .from('reviews')
+                    .select('target_id, rating')
+                    .in('target_id', venueIds);
+                if (reviews) {
+                    const grouped = reviews.reduce((acc: any, r: any) => {
+                        if (!acc[r.target_id]) acc[r.target_id] = [];
+                        acc[r.target_id].push(r.rating);
+                        return acc;
+                    }, {});
+                    for (const [id, ratings] of Object.entries(grouped)) {
+                        const arr = ratings as number[];
+                        ratingMap[id] = arr.reduce((a: number, b: number) => a + b, 0) / arr.length;
+                    }
+                }
+            }
+
             const formatted = data?.map((item: any) => ({
                 id: item.id,
                 full_name: item.profiles.full_name,
                 avatar_url: item.profiles.avatar_url,
                 city: item.profiles.city,
+                price_from: item.price_from,
                 capacity: item.capacity,
-                category_name: item.categories?.name
+                distance_to_beach_m: item.distance_to_beach_m,
+                location_zone: item.location_zone,
+                category_name: item.categories?.name,
+                avg_rating: ratingMap[item.id] || 0,
             })) || [];
             setItems(formatted);
         }
@@ -169,14 +188,9 @@ export default function CategoryResultsScreen() {
             ListEmptyComponent={
                 <View style={styles.emptyState}>
                      <Icon name="search" type="feather" size={60} color="#2D2638" />
-                     <Text style={{ color: theme.colors.grey2, marginTop: 15, fontWeight: '600' }}>
-                         {items.length === 0 ? 'Никого нет' : 'Ничего не найдено'}
-                     </Text>
-                     
-                     {/* ОТЛАДОЧНАЯ ИНФОРМАЦИЯ (Убери потом) */}
-                     <Text style={{ color: 'gray', fontSize: 10, marginTop: 20 }}>
-                         Debug: Category ID {categoryId} ({type})
-                     </Text>
+            <Text style={{ color: theme.colors.grey2, marginTop: 15, fontWeight: '600' }}>
+                {items.length === 0 ? 'Никого нет' : 'Ничего не найдено'}
+            </Text>
                 </View>
             }
         />

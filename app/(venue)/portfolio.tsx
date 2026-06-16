@@ -1,80 +1,231 @@
 import { Icon, Text, useTheme } from '@rneui/themed';
-import { router, useFocusEffect } from 'expo-router';
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { UserAvatar } from '../../components/UserAvatar'; // <---
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Modal,
+    StyleSheet,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppHeader } from '../../components/AppHeader';
 import { supabase } from '../../lib/supabase';
+import { uploadFileToSupabase } from '../../lib/uploader';
 import { useAuth } from '../../providers/AuthProvider';
 
-export default function VenueProfileMenu() {
-  const { theme } = useTheme();
+const { width } = Dimensions.get('window');
+const COLUMN_SIZE = (width - 40) / 3;
+
+export default function VenuePortfolioScreen() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<any>(null);
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
-  useFocusEffect(
-    React.useCallback(() => {
-      if(user) supabase.from('profiles').select('*').eq('id', user.id).single().then(({data}) => setProfile(data));
-    }, [user])
-  );
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
 
-  const menuItems = [
-    { title: 'Редактировать профиль', icon: 'edit-2', route: '/(venue)/edit-profile', color: theme.colors.primary },
-    { title: 'Галерея (Интерьер/Меню)', icon: 'image', route: '/(venue)/portfolio', color: '#F59E0B' },
-    { title: 'Настройки аккаунта', icon: 'settings', route: '/settings', color: theme.colors.grey2 },
-  ];
+  useEffect(() => { fetchPortfolio(); }, []);
 
-  const MenuItem = ({ item }: any) => (
-    <TouchableOpacity 
-      onPress={() => router.push(item.route)}
-      activeOpacity={0.7}
-      style={[styles.menuItem, { backgroundColor: theme.colors.grey0 }]}
-    >
-      <View style={[styles.iconBox, { backgroundColor: item.color + '15' }]}>
-        <Icon name={item.icon} type="feather" color={item.color} size={20} />
-      </View>
-      <Text style={[styles.menuTitle, { color: theme.colors.black }]}>{item.title}</Text>
-      <Icon name="chevron-right" type="feather" color={theme.colors.grey3} size={20} />
-    </TouchableOpacity>
-  );
+  async function fetchPortfolio() {
+    if (!user) return;
+    const { data } = await supabase
+        .from('portfolio')
+        .select('*')
+        .eq('specialist_id', user.id)
+        .order('is_pinned', { ascending: false })
+        .order('created_at', { ascending: false });
+    if (data) setItems(data);
+    setLoading(false);
+  }
+
+  async function pickMedia() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+    });
+    if (!result.canceled) uploadFile(result.assets[0]);
+  }
+
+  async function uploadFile(asset: any) {
+    setUploading(true);
+    try {
+      const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const timestamp = Date.now();
+      const fileName = `venues/${user?.id}/${timestamp}.${ext}`;
+      const publicUrl = await uploadFileToSupabase('portfolio', asset.uri, fileName);
+
+      const { error } = await supabase.from('portfolio').insert({
+          specialist_id: user?.id,
+          file_url: publicUrl,
+          thumbnail_url: publicUrl,
+          file_type: 'image',
+          in_feed: false,
+          is_pinned: false,
+      });
+      if (error) throw error;
+      fetchPortfolio();
+    } catch (e: any) {
+        Alert.alert('Ошибка', e.message);
+    } finally {
+        setUploading(false);
+    }
+  }
+
+  async function togglePin(item: any) {
+      const newValue = !item.is_pinned;
+      const updatedItem = { ...item, is_pinned: newValue };
+      setSelectedItem(updatedItem);
+      const tempItems = items.map(i => i.id === item.id ? updatedItem : i);
+      tempItems.sort((a, b) => (Number(b.is_pinned) - Number(a.is_pinned)) || (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+      setItems(tempItems);
+      await supabase.from('portfolio').update({ is_pinned: newValue }).eq('id', item.id);
+  }
+
+  async function makeHero(item: any) {
+      const newItems = items.map(i => ({ ...i, is_hero: i.id === item.id }));
+      setItems(newItems);
+      setSelectedItem({ ...item, is_hero: true });
+      await supabase.from('portfolio').update({ is_hero: false }).eq('specialist_id', user?.id);
+      await supabase.from('portfolio').update({ is_hero: true }).eq('id', item.id);
+      Alert.alert("Обложка обновлена", "Это фото будет показано в карточке заведения.");
+  }
+
+  async function deleteItem(id: string) {
+    Alert.alert("Удалить?", "Фото исчезнет навсегда.", [
+        { text: "Отмена", style: "cancel" },
+        { text: "Удалить", style: "destructive", onPress: async () => {
+            await supabase.from('portfolio').delete().eq('id', id);
+            setItems(prev => prev.filter(item => item.id !== id));
+            setSelectedItem(null);
+        }}
+    ]);
+  }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
-        <UserAvatar avatarUrl={profile?.avatar_url} size={120} />
-        
-        <Text h3 style={{ color: theme.colors.black, textAlign: 'center', marginTop: 15, fontWeight: '900' }}>
-            {profile?.full_name || 'Заведение'}
-        </Text>
-        <Text style={{ color: theme.colors.grey2, marginTop: 5 }}>
-            {profile?.city || 'Адрес не указан'}
-        </Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      <AppHeader
+        title="Галерея"
+        rightComponent={
+          <TouchableOpacity onPress={pickMedia} disabled={uploading}>
+            {uploading ? <ActivityIndicator color="#00FFCC" /> : <Icon name="plus-square" type="feather" color="#00FFCC" size={26} />}
+          </TouchableOpacity>
+        }
+      />
 
-        <View style={[styles.tag, { backgroundColor: theme.colors.primary + '15', marginTop: 15 }]}>
-            <Text style={{ color: theme.colors.primary, fontWeight: '700', textTransform: 'uppercase', fontSize: 12 }}>
-                Бизнес аккаунт
-            </Text>
-        </View>
-      </View>
+      {loading ? <ActivityIndicator size="large" color="#8A2BE2" style={{marginTop: 50}} /> : (
+          <FlatList
+            data={items}
+            keyExtractor={item => item.id}
+            numColumns={3}
+            contentContainerStyle={styles.gridContainer}
+            columnWrapperStyle={{ gap: 10 }}
+            renderItem={({item}) => (
+                <TouchableOpacity
+                    style={[
+                        styles.gridItem,
+                        item.is_hero && { borderColor: '#FFA502', borderWidth: 2 },
+                        item.is_pinned && { borderColor: '#00FFCC', borderWidth: 1 }
+                    ]}
+                    onPress={() => setSelectedItem(item)}
+                    activeOpacity={0.8}
+                >
+                    <Image
+                        source={{ uri: item.thumbnail_url || item.file_url }}
+                        style={styles.media}
+                        contentFit="cover"
+                    />
+                    <View style={styles.badgesContainer}>
+                        {item.is_pinned && <Icon name="paperclip" type="feather" color="#00FFCC" size={10} style={styles.miniIcon} />}
+                        {item.is_hero && <Icon name="star" type="font-awesome" color="#FFA502" size={10} style={styles.miniIcon} />}
+                    </View>
+                </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+                <View style={styles.empty}>
+                    <Icon name="image" type="feather" size={50} color="#2D2638" />
+                    <Text style={{color: '#6B6675', marginTop: 15, textAlign: 'center'}}>
+                        Добавьте фото интерьера,{'\n'}меню и территории
+                    </Text>
+                </View>
+            }
+          />
+      )}
 
-      <View style={styles.menuContainer}>
-        {menuItems.map((item, index) => (
-          <MenuItem key={index} item={item} />
-        ))}
-      </View>
-    </ScrollView>
+      <Modal visible={!!selectedItem} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { backgroundColor: '#1A1625' }]}>
+                  <View style={styles.modalImageContainer}>
+                      {selectedItem && (
+                          <Image
+                            source={{ uri: selectedItem.thumbnail_url || selectedItem.file_url }}
+                            style={styles.modalImg}
+                            contentFit="contain"
+                          />
+                      )}
+                  </View>
+
+                  <View style={styles.modalControls}>
+                      <Text style={{ color: '#6B6675', fontSize: 12, fontWeight: 'bold', marginBottom: 15 }}>НАСТРОЙКИ ФОТО</Text>
+
+                      <TouchableOpacity style={styles.actionRow} onPress={() => makeHero(selectedItem)}>
+                          <Icon name="star" type="feather" color={selectedItem?.is_hero ? "#FFA502" : "#fff"} size={22} />
+                          <View style={{marginLeft: 15, flex: 1}}>
+                              <Text style={{ color: selectedItem?.is_hero ? "#FFA502" : "#fff", fontWeight: 'bold', fontSize: 16 }}>
+                                  {selectedItem?.is_hero ? "Главное фото" : "Сделать главным"}
+                              </Text>
+                              <Text style={{ color: '#6B6675', fontSize: 12 }}>Показывается в карточке заведения</Text>
+                          </View>
+                          {selectedItem?.is_hero && <Icon name="check" type="feather" color="#FFA502" size={18} />}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity style={styles.actionRow} onPress={() => togglePin(selectedItem)}>
+                          <Icon name="paperclip" type="feather" color={selectedItem?.is_pinned ? "#00FFCC" : "#fff"} size={22} />
+                          <View style={{marginLeft: 15, flex: 1}}>
+                              <Text style={{ color: selectedItem?.is_pinned ? "#00FFCC" : "#fff", fontWeight: 'bold', fontSize: 16 }}>
+                                  {selectedItem?.is_pinned ? "Открепить" : "Закрепить в начале"}
+                              </Text>
+                              <Text style={{ color: '#6B6675', fontSize: 12 }}>Будет первым в галерее</Text>
+                          </View>
+                      </TouchableOpacity>
+
+                      <View style={{ flexDirection: 'row', marginTop: 20, gap: 10 }}>
+                          <TouchableOpacity style={[styles.btn, { backgroundColor: 'rgba(255, 71, 87, 0.1)', flex: 1 }]} onPress={() => deleteItem(selectedItem?.id)}>
+                              <Icon name="trash-2" type="feather" color="#FF4757" size={18} style={{marginRight: 5}} />
+                              <Text style={{ color: '#FF4757', fontWeight: 'bold' }}>Удалить</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[styles.btn, { backgroundColor: '#2D2638', flex: 1 }]} onPress={() => setSelectedItem(null)}>
+                              <Text style={{ color: '#fff', fontWeight: '600' }}>Закрыть</Text>
+                          </TouchableOpacity>
+                      </View>
+                  </View>
+              </View>
+          </View>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
-    header: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 20, marginBottom: 20 },
-    tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
-    
-    menuContainer: { paddingHorizontal: 20, gap: 12 },
-    menuItem: { 
-        flexDirection: 'row', alignItems: 'center', 
-        padding: 16, borderRadius: 18, 
-    },
-    iconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-    menuTitle: { flex: 1, fontSize: 16, fontWeight: '600' }
+  container: { flex: 1 },
+  gridContainer: { paddingHorizontal: 20, paddingBottom: 50 },
+  gridItem: { width: COLUMN_SIZE, height: COLUMN_SIZE * 1.3, borderRadius: 16, overflow: 'hidden', backgroundColor: '#2D2638', marginBottom: 10 },
+  media: { width: '100%', height: '100%' },
+  badgesContainer: { position: 'absolute', bottom: 5, left: 5, flexDirection: 'row', gap: 4 },
+  miniIcon: { backgroundColor: 'rgba(0,0,0,0.6)', padding: 3, borderRadius: 6 },
+  empty: { alignItems: 'center', marginTop: 100 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', padding: 20 },
+  modalContent: { borderRadius: 24, overflow: 'hidden' },
+  modalImageContainer: { height: 250, width: '100%', backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
+  modalImg: { width: '100%', height: '100%' },
+  modalControls: { padding: 20 },
+  actionRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  btn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 15, borderRadius: 12 },
 });

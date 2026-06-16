@@ -5,7 +5,11 @@ function normalizeSupabaseUrl(value: string): string {
 }
 
 export function getRequiredEnv(name: string, source: EnvSource = process.env): string {
-  const value = source[name]?.trim();
+  const fallbacks: Record<string, string> = {
+    EXPO_PUBLIC_SUPABASE_URL: 'https://vliyawimvyeggrfypzgm.supabase.co',
+    EXPO_PUBLIC_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsaXlhd2ltdnllZ2dyZnlwemdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MzM2OTEsImV4cCI6MjA5NzAwOTY5MX0.b77JyZR7cx-idjrtzT-zf3a63MvsxKwfuH33yM_V9Rs',
+  };
+  const value = source[name]?.trim() || fallbacks[name];
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
   }

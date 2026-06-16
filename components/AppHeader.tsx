@@ -11,7 +11,7 @@ interface AppHeaderProps {
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
-  title = 'ServiceApp',
+  title = 'Taptym',
   showBack = true,
   showSettings = true,
   rightComponent,

@@ -3,7 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { AppHeader } from '../../components/AppHeader';
-import { ProfileCard } from '../../components/ProfileCard'; // <--- Новая карточка
+import { ProfileCard } from '../../components/ProfileCard';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 
@@ -23,9 +23,7 @@ export default function FavoritesScreen() {
     const favoriteIds = favData?.map(f => f.target_id) || [];
 
     if (favoriteIds.length > 0) {
-      // Ищем и в спецах, и в заведениях (через View глобального поиска, если есть, или специалиста)
-      // Для простоты используем specialist_search_view, но в идеале global
-      const { data } = await supabase.from('specialist_search_view').select('*').in('id', favoriteIds); 
+      const { data } = await supabase.from('global_search_view').select('*').in('id', favoriteIds);
       if (data) setItems(data);
     } else {
       setItems([]);
@@ -44,7 +42,7 @@ export default function FavoritesScreen() {
           <FlatList
               data={items}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <ProfileCard item={item} />} // <--- Используем ProfileCard
+              renderItem={({ item }) => <ProfileCard item={item} type={item.role || 'specialist'} />}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => {setRefreshing(true); fetchFavorites();}} tintColor={theme.colors.primary} />}
               contentContainerStyle={{ padding: 20 }}
               ListEmptyComponent={
