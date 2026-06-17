@@ -115,12 +115,12 @@ export default function VenuePortfolioScreen() {
         title="Галерея"
         rightComponent={
           <TouchableOpacity onPress={pickMedia} disabled={uploading}>
-            {uploading ? <ActivityIndicator color="#00FFCC" /> : <Icon name="plus-square" type="feather" color="#00FFCC" size={26} />}
+            {uploading ? <ActivityIndicator color="#F0B90B" /> : <Icon name="plus-square" type="feather" color="#F0B90B" size={26} />}
           </TouchableOpacity>
         }
       />
 
-      {loading ? <ActivityIndicator size="large" color="#8A2BE2" style={{marginTop: 50}} /> : (
+      {loading ? <ActivityIndicator size="large" color="#F0B90B" style={{marginTop: 50}} /> : (
           <FlatList
             data={items}
             keyExtractor={item => item.id}
@@ -132,7 +132,7 @@ export default function VenuePortfolioScreen() {
                     style={[
                         styles.gridItem,
                         item.is_hero && { borderColor: '#FFA502', borderWidth: 2 },
-                        item.is_pinned && { borderColor: '#00FFCC', borderWidth: 1 }
+                        item.is_pinned && { borderColor: '#F0B90B', borderWidth: 1 }
                     ]}
                     onPress={() => setSelectedItem(item)}
                     activeOpacity={0.8}
@@ -143,7 +143,7 @@ export default function VenuePortfolioScreen() {
                         contentFit="cover"
                     />
                     <View style={styles.badgesContainer}>
-                        {item.is_pinned && <Icon name="paperclip" type="feather" color="#00FFCC" size={10} style={styles.miniIcon} />}
+                        {item.is_pinned && <Icon name="paperclip" type="feather" color="#F0B90B" size={10} style={styles.miniIcon} />}
                         {item.is_hero && <Icon name="star" type="font-awesome" color="#FFA502" size={10} style={styles.miniIcon} />}
                     </View>
                 </TouchableOpacity>
@@ -161,7 +161,7 @@ export default function VenuePortfolioScreen() {
 
       <Modal visible={!!selectedItem} transparent animationType="fade">
           <View style={styles.modalOverlay}>
-              <View style={[styles.modalContent, { backgroundColor: '#1A1625' }]}>
+              <View style={[styles.modalContent, { backgroundColor: '#1E2329' }]}>
                   <View style={styles.modalImageContainer}>
                       {selectedItem && (
                           <Image
@@ -187,9 +187,9 @@ export default function VenuePortfolioScreen() {
                       </TouchableOpacity>
 
                       <TouchableOpacity style={styles.actionRow} onPress={() => togglePin(selectedItem)}>
-                          <Icon name="paperclip" type="feather" color={selectedItem?.is_pinned ? "#00FFCC" : "#fff"} size={22} />
+                          <Icon name="paperclip" type="feather" color={selectedItem?.is_pinned ? "#F0B90B" : "#fff"} size={22} />
                           <View style={{marginLeft: 15, flex: 1}}>
-                              <Text style={{ color: selectedItem?.is_pinned ? "#00FFCC" : "#fff", fontWeight: 'bold', fontSize: 16 }}>
+                              <Text style={{ color: selectedItem?.is_pinned ? "#F0B90B" : "#fff", fontWeight: 'bold', fontSize: 16 }}>
                                   {selectedItem?.is_pinned ? "Открепить" : "Закрепить в начале"}
                               </Text>
                               <Text style={{ color: '#6B6675', fontSize: 12 }}>Будет первым в галерее</Text>
@@ -201,7 +201,7 @@ export default function VenuePortfolioScreen() {
                               <Icon name="trash-2" type="feather" color="#FF4757" size={18} style={{marginRight: 5}} />
                               <Text style={{ color: '#FF4757', fontWeight: 'bold' }}>Удалить</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity style={[styles.btn, { backgroundColor: '#2D2638', flex: 1 }]} onPress={() => setSelectedItem(null)}>
+                          <TouchableOpacity style={[styles.btn, { backgroundColor: '#2B3139', flex: 1 }]} onPress={() => setSelectedItem(null)}>
                               <Text style={{ color: '#fff', fontWeight: '600' }}>Закрыть</Text>
                           </TouchableOpacity>
                       </View>
@@ -216,7 +216,7 @@ export default function VenuePortfolioScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   gridContainer: { paddingHorizontal: 20, paddingBottom: 50 },
-  gridItem: { width: COLUMN_SIZE, height: COLUMN_SIZE * 1.3, borderRadius: 16, overflow: 'hidden', backgroundColor: '#2D2638', marginBottom: 10 },
+  gridItem: { width: COLUMN_SIZE, height: COLUMN_SIZE * 1.3, borderRadius: 16, overflow: 'hidden', backgroundColor: '#2B3139', marginBottom: 10 },
   media: { width: '100%', height: '100%' },
   badgesContainer: { position: 'absolute', bottom: 5, left: 5, flexDirection: 'row', gap: 4 },
   miniIcon: { backgroundColor: 'rgba(0,0,0,0.6)', padding: 3, borderRadius: 6 },

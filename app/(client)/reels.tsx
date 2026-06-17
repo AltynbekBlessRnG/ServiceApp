@@ -8,6 +8,7 @@ import {
   Dimensions,
   FlatList,
   Platform,
+  Share,
   StatusBar,
   StyleSheet,
   TouchableOpacity,
@@ -26,6 +27,7 @@ export default function ReelsScreen() {
   
   const [videos, setVideos] = useState<any[]>([]);
   const [currentId, setCurrentId] = useState<any>(null);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   // Расчет высоты (Экран минус меню снизу)
   const BOTTOM_TAB_HEIGHT = 60 + (Platform.OS === 'ios' ? insets.bottom : 0); // Чуть подправил для Android
@@ -59,8 +61,23 @@ export default function ReelsScreen() {
     }
   }).current;
 
+  const toggleLike = (item: any) => {
+    setLikedIds(prev => {
+        const next = new Set(prev);
+        if (next.has(item.id)) next.delete(item.id);
+        else next.add(item.id);
+        return next;
+    });
+  };
+
+  const handleShare = async (item: any) => {
+    const name = item.profiles?.full_name || 'Мастер';
+    await Share.share({ message: `Посмотри видео от ${name} в Taptym!` });
+  };
+
   const renderItem = ({ item }: { item: any }) => {
     const isPlaying = item.id === currentId && isFocused;
+    const isLiked = likedIds.has(item.id);
 
     return (
         <View style={{ width: SCREEN_WIDTH, height: ITEM_HEIGHT, backgroundColor: 'black' }}>
@@ -102,9 +119,9 @@ export default function ReelsScreen() {
 
                 {/* ПРАВАЯ ЧАСТЬ: КНОПКИ */}
                 <View style={styles.actionsColumn}>
-                    <TouchableOpacity style={styles.actionBtn}>
-                        <Icon name="heart" type="font-awesome" color="white" size={30} style={styles.shadow} />
-                        <Text style={styles.actionText}>Like</Text>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => toggleLike(item)}>
+                        <Icon name="heart" type="font-awesome" color={isLiked ? "#FF4757" : "white"} size={30} style={styles.shadow} />
+                        <Text style={[styles.actionText, isLiked && { color: '#FF4757' }]}>Like</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity 
@@ -115,7 +132,7 @@ export default function ReelsScreen() {
                         <Text style={styles.actionText}>Чат</Text>
                     </TouchableOpacity>
                     
-                     <TouchableOpacity style={styles.actionBtn}>
+                     <TouchableOpacity style={styles.actionBtn} onPress={() => handleShare(item)}>
                         <Icon name="share-2" type="feather" color="white" size={30} style={styles.shadow} />
                         <Text style={styles.actionText}>Share</Text>
                     </TouchableOpacity>

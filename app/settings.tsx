@@ -14,9 +14,9 @@ const SettingItem = ({ icon, title, onPress, color, theme }: any) => (
   <TouchableOpacity 
     onPress={onPress} 
     activeOpacity={0.7}
-    style={[styles.itemContainer, { backgroundColor: '#1A1625', borderColor: '#2D2638' }]}
+    style={[styles.itemContainer, { backgroundColor: '#1E2329', borderColor: '#2B3139' }]}
   >
-      <View style={[styles.iconBox, { backgroundColor: color ? color + '20' : '#2D2638' }]}>
+      <View style={[styles.iconBox, { backgroundColor: color ? color + '20' : '#2B3139' }]}>
           <Icon name={icon} type="feather" size={18} color={color || '#fff'} />
       </View>
       <Text style={[styles.itemText, { color: color || '#fff' }]}>{title}</Text>
@@ -104,7 +104,7 @@ export default function SettingsScreen() {
     ]);
   };
 
-  if (authLoading) return <View style={styles.center}><ActivityIndicator size="large" color="#8A2BE2" /></View>;
+  if (authLoading) return <View style={styles.center}><ActivityIndicator size="large" color="#F0B90B" /></View>;
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0} style={{flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top}}>
@@ -140,13 +140,13 @@ export default function SettingsScreen() {
                 leftIcon={<Icon name="phone" type="feather" size={18} color="#A09BAF" />} 
             />
             
-            <Button title="Сохранить" loading={loading} onPress={handleSave} buttonStyle={{ backgroundColor: '#00FFCC' }} titleStyle={{ color: '#000', fontWeight: 'bold' }} />
+            <Button title="Сохранить" loading={loading} onPress={handleSave} buttonStyle={{ backgroundColor: '#F0B90B' }} titleStyle={{ color: '#000', fontWeight: 'bold' }} />
         </View>
 
         <View style={styles.section}>
             <Text style={styles.sectionTitle}>ПРИЛОЖЕНИЕ</Text>
             <SettingItem icon="info" title="О приложении" onPress={() => router.push('/credits')} theme={theme} />
-            {profile?.is_admin && <SettingItem icon="shield" title="Админ Панель" onPress={() => router.push('/(admin)/dashboard')} color="#8A2BE2" theme={theme} />}
+            {profile?.is_admin && <SettingItem icon="shield" title="Админ Панель" onPress={() => router.push('/(admin)/dashboard')} color="#F0B90B" theme={theme} />}
         </View>
 
         <View style={[styles.section, { marginBottom: 40 }]}>
@@ -161,11 +161,11 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F0C15' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0B0E11' },
   container: { padding: 20, paddingBottom: 40 },
   avatarSection: { alignItems: 'center', marginBottom: 30 },
   avatarWrapper: { position: 'relative' },
-  editBadge: { position: 'absolute', bottom: 0, right: 0, padding: 8, borderRadius: 20, backgroundColor: '#8A2BE2', borderWidth: 3, borderColor: '#0F0C15' },
+  editBadge: { position: 'absolute', bottom: 0, right: 0, padding: 8, borderRadius: 20, backgroundColor: '#F0B90B', borderWidth: 3, borderColor: '#0B0E11' },
   section: { marginBottom: 25 },
   sectionTitle: { fontSize: 12, fontWeight: '800', marginBottom: 10, marginLeft: 5, textTransform: 'uppercase', color: '#6B6675', letterSpacing: 1 },
   itemContainer: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, marginBottom: 10, borderWidth: 1 },

@@ -68,19 +68,19 @@ export default function Index() {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#0F0C15',
+        backgroundColor: '#0B0E11',
         padding: 20,
       }}
     >
       <StatusBar style="light" />
 
-      <Icon name="zap" type="feather" size={80} color="#8A2BE2" />
+      <Icon name="zap" type="feather" size={80} color="#F0B90B" />
       <View style={{ height: 30 }} />
 
       {isLoading ? (
-        <ActivityIndicator size="large" color="#00FFCC" />
+        <ActivityIndicator size="large" color="#F0B90B" />
       ) : (
-        <Icon name="check-circle" type="feather" size={40} color="#00FFCC" />
+        <Icon name="check-circle" type="feather" size={40} color="#F0B90B" />
       )}
 
       <Text

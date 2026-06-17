@@ -170,21 +170,21 @@ export default function SpecialistDetailScreen() {
                 <Text h4 style={{ color: '#fff', marginTop: 10, textAlign: 'center' }}>
                     {specialist?.full_name || initialName}
                 </Text>
-                <Text style={{ color: '#00FFCC', fontWeight: '700', marginTop: 4 }}>
+                <Text style={{ color: '#F0B90B', fontWeight: '700', marginTop: 4 }}>
                     {specialist?.category_name || initialCategory}
                 </Text>
                 
-                <View style={[styles.statsRow, { borderColor: '#2D2638' }]}>
+                <View style={[styles.statsRow, { borderColor: '#2B3139' }]}>
                     <View style={styles.statItem}>
                         <Text style={[styles.statValue, { color: '#fff' }]}>{specialist?.experience_years ?? '-'} лет</Text>
                         <Text style={styles.statLabel}>Опыт</Text>
                     </View>
-                    <View style={[styles.statDivider, { backgroundColor: '#2D2638' }]} />
+                    <View style={[styles.statDivider, { backgroundColor: '#2B3139' }]} />
                     <View style={styles.statItem}>
-                        <Text style={[styles.statValue, { color: '#fff' }]}>⭐ {Number(specialist?.avg_rating || 5).toFixed(1)}</Text>
+                        <Text style={[styles.statValue, { color: '#fff' }]}>⭐ {Number(specialist?.avg_rating || 0).toFixed(1)}</Text>
                         <Text style={styles.statLabel}>Рейтинг</Text>
                     </View>
-                    <View style={[styles.statDivider, { backgroundColor: '#2D2638' }]} />
+                    <View style={[styles.statDivider, { backgroundColor: '#2B3139' }]} />
                     <View style={styles.statItem}>
                         <Text style={[styles.statValue, { color: '#fff' }]}>{specialist?.price_start ?? initialPrice} ₸</Text>
                         <Text style={styles.statLabel}>Цена от</Text>
@@ -193,7 +193,7 @@ export default function SpecialistDetailScreen() {
 
                 {/* Описание и Портфолио грузятся позже, поэтому тут можно показать скелетон или спиннер */}
                 {loading ? (
-                    <ActivityIndicator size="small" color="#8A2BE2" style={{ marginTop: 20 }} />
+                    <ActivityIndicator size="small" color="#F0B90B" style={{ marginTop: 20 }} />
                 ) : (
                     <Text style={[styles.bio, { color: '#fff' }]}>{specialist?.bio || 'Мастер не добавил описание.'}</Text>
                 )}
@@ -206,7 +206,7 @@ export default function SpecialistDetailScreen() {
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
                         {portfolio.map((item, i) => (
                             <TouchableOpacity key={i} onPress={() => setSelectedMedia(item)}>
-                                <View style={[styles.portItem, item.is_pinned && { borderColor: '#00FFCC', borderWidth: 2 }]}>
+                                <View style={[styles.portItem, item.is_pinned && { borderColor: '#F0B90B', borderWidth: 2 }]}>
                                     <Image source={{ uri: item.thumbnail_url || item.file_url }} style={styles.portImg} contentFit="cover" cachePolicy="memory-disk"/>
                                     {item.file_type === 'video' && <View style={styles.videoBadge}><Icon name="play" type="feather" color="#fff" size={14} /></View>}
                                 </View>
@@ -222,11 +222,11 @@ export default function SpecialistDetailScreen() {
                     <View style={styles.rowBetween}>
                         <Text h4 style={[styles.sectionTitle, { color: '#fff' }]}>Отзывы ({reviews.length})</Text>
                         <TouchableOpacity onPress={() => router.push({ pathname: '/add-review', params: { targetId, name: specialist?.full_name || initialName, avatar: specialist?.avatar_url || initialAvatar } })}>
-                            <Text style={{ color: '#00FFCC', fontWeight: 'bold' }}>Написать</Text>
+                            <Text style={{ color: '#F0B90B', fontWeight: 'bold' }}>Написать</Text>
                         </TouchableOpacity>
                     </View>
                     {reviews.map((r) => (
-                        <View key={r.id} style={[styles.reviewCard, { backgroundColor: '#1A1625' }]}>
+                        <View key={r.id} style={[styles.reviewCard, { backgroundColor: '#1E2329' }]}>
                             <UserAvatar avatarUrl={r.client?.avatar_url} size={40} />
                             <View style={{ flex: 1, marginLeft: 12 }}>
                                 <View style={styles.rowBetween}>
@@ -243,9 +243,9 @@ export default function SpecialistDetailScreen() {
       </ScrollView>
 
       {/* FOOTER */}
-      <View style={[styles.footer, { backgroundColor: theme.colors.background, borderTopColor: '#2D2638' }]}>
-          <TouchableOpacity style={[styles.chatBtn, { borderColor: '#2D2638' }]} onPress={() => router.push(`/chat/${targetId}`)}>
-              <Icon name="message-circle" type="feather" color="#00FFCC" size={24} />
+      <View style={[styles.footer, { backgroundColor: theme.colors.background, borderTopColor: '#2B3139' }]}>
+          <TouchableOpacity style={[styles.chatBtn, { borderColor: '#2B3139' }]} onPress={() => router.push(`/chat/${targetId}`)}>
+              <Icon name="message-circle" type="feather" color="#F0B90B" size={24} />
           </TouchableOpacity>
           <Button title="Записаться" onPress={() => setModalVisible(true)} buttonStyle={{ backgroundColor: theme.colors.primary, borderRadius: 16, height: 56 }} containerStyle={{ flex: 1 }} />
       </View>
@@ -267,9 +267,9 @@ export default function SpecialistDetailScreen() {
       {/* MODAL BOOKING */}
       <Modal visible={modalVisible} animationType="slide" transparent>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-              <View style={[styles.modalContent, { backgroundColor: '#1A1625' }]}>
+              <View style={[styles.modalContent, { backgroundColor: '#1E2329' }]}>
                   <Text h4 style={{ textAlign: 'center', marginBottom: 15, color: '#fff' }}>Дата и время</Text>
-                  <Calendar onDayPress={onDateSelect} markedDates={{ ...busyDates, [selectedDate]: { selected: true, selectedColor: theme.colors.primary } }} theme={{ calendarBackground: 'transparent', dayTextColor: '#fff', monthTextColor: '#fff', arrowColor: theme.colors.primary, todayTextColor: '#00FFCC' }} />
+                   <Calendar onDayPress={onDateSelect} markedDates={{ ...busyDates, [selectedDate]: { selected: true, selectedColor: theme.colors.primary } }} theme={{ calendarBackground: 'transparent', dayTextColor: '#fff', monthTextColor: '#fff', arrowColor: theme.colors.primary, todayTextColor: '#F0B90B' }} />
                   {selectedDate ? (
                       <View style={{ marginTop: 15 }}>
                           <Text style={{ marginBottom: 10, color: 'gray' }}>Свободное время:</Text>

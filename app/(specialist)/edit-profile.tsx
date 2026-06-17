@@ -226,10 +226,10 @@ export default function EditProfileScreen() {
                     onPress={() => toggleTag(subcategory.id)}
                     style={[
                       styles.tagChip,
-                      isSelected ? { backgroundColor: 'rgba(0, 255, 204, 0.2)', borderColor: '#00FFCC' } : { borderColor: '#2D2638' },
+                      isSelected ? { backgroundColor: 'rgba(240, 185, 11, 0.2)', borderColor: '#F0B90B' } : { borderColor: '#2B3139' },
                     ]}
                   >
-                    <Text style={{ color: isSelected ? '#00FFCC' : '#A09BAF', fontWeight: '600', fontSize: 13 }}>{subcategory.name}</Text>
+                    <Text style={{ color: isSelected ? '#F0B90B' : '#A09BAF', fontWeight: '600', fontSize: 13 }}>{subcategory.name}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -243,7 +243,7 @@ export default function EditProfileScreen() {
           numberOfLines={5}
           value={bio}
           onChangeText={setBio}
-          inputContainerStyle={[styles.textArea, { backgroundColor: '#1A1625', borderColor: '#2D2638' }]}
+          inputContainerStyle={[styles.textArea, { backgroundColor: '#1E2329', borderColor: '#2B3139' }]}
           inputStyle={{ textAlignVertical: 'top', color: '#fff', paddingTop: 10 }}
         />
 
@@ -266,15 +266,15 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   container: { padding: 20, paddingTop: 50 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 30 },
-  backBtn: { padding: 10, backgroundColor: '#1A1625', borderRadius: 12 },
+  backBtn: { padding: 10, backgroundColor: '#1E2329', borderRadius: 12 },
   avatarSection: { alignItems: 'center', marginBottom: 30 },
   label: { fontSize: 12, fontWeight: '800', marginLeft: 5, marginBottom: 12, textTransform: 'uppercase', color: '#6B6675', letterSpacing: 1 },
   chip: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, marginRight: 0 },
-  inactiveChip: { backgroundColor: '#1A1625', borderWidth: 1, borderColor: '#2D2638' },
+  inactiveChip: { backgroundColor: '#1E2329', borderWidth: 1, borderColor: '#2B3139' },
   chipText: { fontWeight: '700', fontSize: 13 },
   zoneRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tagChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, backgroundColor: '#1A1625' },
+  tagChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, backgroundColor: '#1E2329' },
   textArea: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 10, height: 120 },
   row: { flexDirection: 'row' },
   checkItem: { backgroundColor: 'transparent', borderWidth: 0, paddingHorizontal: 0, margin: 0, marginBottom: 16 },

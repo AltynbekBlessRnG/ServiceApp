@@ -84,7 +84,7 @@ export default function SpecialistProfileScreen() {
              
              <View style={{marginLeft: 15, flex: 1}}>
                 {loading ? (
-                    <ActivityIndicator size="small" color="#8A2BE2" />
+                    <ActivityIndicator size="small" color="#F0B90B" />
                 ) : (
                     <>
                         <Text style={styles.userName}>
@@ -98,7 +98,7 @@ export default function SpecialistProfileScreen() {
                             </Text>
                         </View>
 
-                        <Text style={{color: '#00FFCC', fontSize: 12, fontWeight: 'bold', marginTop: 4}}>
+                        <Text style={{color: '#F0B90B', fontSize: 12, fontWeight: 'bold', marginTop: 4}}>
                             • Онлайн
                         </Text>
                     </>
@@ -118,7 +118,7 @@ export default function SpecialistProfileScreen() {
                     {item.active ? (
                         // Градиентная кнопка
                         <LinearGradient
-                            colors={['#8A2BE2', '#00FFCC']}
+                            colors={['#F0B90B', '#F0B90B']}
                             start={{ x: 0, y: 0.5 }}
                             end={{ x: 1, y: 0.5 }}
                             style={styles.menuItemGradient}
@@ -133,7 +133,7 @@ export default function SpecialistProfileScreen() {
                         <View style={styles.menuItemPlain}>
                             <Icon name={item.icon} type="feather" color="#fff" size={22} style={styles.icon} />
                             <Text style={[styles.menuTitle, { color: '#fff' }]}>{item.title}</Text>
-                            <Icon name="chevron-right" type="feather" color="#2D2638" size={20} />
+                            <Icon name="chevron-right" type="feather" color="#2B3139" size={20} />
                         </View>
                     )}
                 </TouchableOpacity>
@@ -154,12 +154,12 @@ export default function SpecialistProfileScreen() {
 const styles = StyleSheet.create({
   brandingContainer: { alignItems: 'center', marginVertical: 30 },
   brandingBox: { 
-      backgroundColor: '#1A1625', 
+      backgroundColor: '#1E2329', 
       paddingHorizontal: 30, 
       paddingVertical: 10, 
       borderRadius: 30, 
       borderWidth: 1, 
-      borderColor: '#2D2638' 
+      borderColor: '#2B3139' 
   },
   brandingText: { color: '#FFF', fontSize: 18, fontWeight: '900', letterSpacing: 1 },
   
@@ -168,13 +168,13 @@ const styles = StyleSheet.create({
       alignItems: 'center', 
       marginHorizontal: 20, 
       padding: 20, 
-      backgroundColor: '#1A1625', 
+      backgroundColor: '#1E2329', 
       borderRadius: 24,
       marginBottom: 20,
       borderWidth: 1,
-      borderColor: '#2D2638'
+      borderColor: '#2B3139'
   },
-  avatarBorder: { borderWidth: 2, borderColor: '#8A2BE2', borderRadius: 45, padding: 3 },
+  avatarBorder: { borderWidth: 2, borderColor: '#F0B90B', borderRadius: 45, padding: 3 },
   userName: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
   userCity: { color: '#A09BAF', fontSize: 14 },
 
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   menuItemGradient: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 20 },
   menuItemPlain: { 
       flexDirection: 'row', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 20,
-      backgroundColor: '#1A1625', borderRadius: 16, borderWidth: 1, borderColor: '#2D2638'
+      backgroundColor: '#1E2329', borderRadius: 16, borderWidth: 1, borderColor: '#2B3139'
   },
   
   icon: { marginRight: 15 },

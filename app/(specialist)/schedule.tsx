@@ -1,7 +1,7 @@
 import { Icon, Text, useTheme } from '@rneui/themed';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '../../components/AppHeader';
@@ -125,8 +125,8 @@ export default function SpecialistScheduleScreen() {
       // Ищем ручную блокировку
       const isManualBusy = manualBlocks.includes(time);
 
-      let bgColor = '#1A1625'; // Дефолт (Свободно)
-      let borderColor = '#2D2638';
+      let bgColor = '#1E2329'; // Дефолт (Свободно)
+      let borderColor = '#2B3139';
       let textColor = '#fff';
       let icon = null;
       let statusText = 'Свободно';
@@ -138,15 +138,15 @@ export default function SpecialistScheduleScreen() {
           icon = 'user';
           statusText = booking.status === 'pending' ? 'Заявка' : 'Занято';
       } else if (isManualBusy) {
-          bgColor = '#2D2638';                 // Серый фон
+           bgColor = '#2B3139';                 // Серый фон
           borderColor = '#6B6675';
           textColor = '#6B6675';
           icon = 'lock';
           statusText = 'Закрыто вами';
       } else {
           // Свободно
-          textColor = '#00FFCC';
-          borderColor = 'rgba(0, 255, 204, 0.3)';
+          textColor = '#F0B90B';
+          borderColor = 'rgba(240, 185, 11, 0.3)';
       }
 
       return (

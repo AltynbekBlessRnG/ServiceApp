@@ -48,13 +48,13 @@ export default function CreditsScreen() {
           icon="cpu"
           title="AI-поиск"
           desc="Помогает найти услугу по свободному запросу, а при недоступности ИИ работает обычный поиск."
-          color="#8A2BE2"
+          color="#F0B90B"
         />
         <FeatureItem
           icon="calendar"
           title="Онлайн-запись"
           desc="Клиент видит доступное время и оставляет заявку без звонков и переписки вне приложения."
-          color="#00FFCC"
+          color="#F0B90B"
         />
         <FeatureItem
           icon="message-circle"
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-5deg' }],
   },
   version: { color: 'gray', marginTop: 5, fontWeight: '600', fontSize: 12 },
-  slogan: { color: '#00FFCC', marginTop: 10, fontWeight: '600', fontSize: 14, letterSpacing: 0.5 },
+  slogan: { color: '#F0B90B', marginTop: 10, fontWeight: '600', fontSize: 14, letterSpacing: 0.5 },
   sectionHeader: { fontSize: 12, fontWeight: '800', marginBottom: 15, letterSpacing: 1 },
   featureItem: { flexDirection: 'row', padding: 16, borderRadius: 20, marginBottom: 12 },
   iconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   featureDesc: { color: 'gray', fontSize: 13, lineHeight: 18 },
   techContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1 },
-  divider: { height: 1, backgroundColor: '#2D2638', marginVertical: 40 },
+  divider: { height: 1, backgroundColor: '#2B3139', marginVertical: 40 },
   devCard: {
     padding: 30,
     borderRadius: 24,
@@ -156,11 +156,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#1A1625',
+    backgroundColor: '#1E2329',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2D2638',
+    borderColor: '#2B3139',
   },
   footerText: { textAlign: 'center', color: '#333', marginTop: 30, fontSize: 12 },
 });

@@ -162,7 +162,7 @@ export default function MyPortfolioScreen() {
         title="Портфолио" 
         rightComponent={
           <TouchableOpacity onPress={pickMedia} disabled={uploading}>
-            {uploading ? <ActivityIndicator color="#00FFCC" /> : <Icon name="plus-square" type="feather" color="#00FFCC" size={26} />}
+            {uploading ? <ActivityIndicator color="#F0B90B" /> : <Icon name="plus-square" type="feather" color="#F0B90B" size={26} />}
           </TouchableOpacity>
         } 
       />
@@ -190,7 +190,7 @@ export default function MyPortfolioScreen() {
                     style={[
                         styles.gridItem, 
                         item.is_hero && { borderColor: '#FFA502', borderWidth: 2 }, // Золотая рамка для обложки
-                        item.is_pinned && { borderColor: '#00FFCC', borderWidth: 1 } // Зеленая для закрепленных
+                        item.is_pinned && { borderColor: '#F0B90B', borderWidth: 1 } // Золотая для закрепленных
                     ]} 
                     onPress={() => setSelectedItem(item)}
                     activeOpacity={0.8}
@@ -223,7 +223,7 @@ export default function MyPortfolioScreen() {
       {/* МОДАЛКА УПРАВЛЕНИЯ */}
       <Modal visible={!!selectedItem} transparent animationType="fade">
           <View style={styles.modalOverlay}>
-              <View style={[styles.modalContent, { backgroundColor: '#1A1625' }]}>
+              <View style={[styles.modalContent, { backgroundColor: '#1E2329' }]}>
                   
                   <View style={styles.modalImageContainer}>
                       {selectedItem && (
@@ -262,7 +262,7 @@ export default function MyPortfolioScreen() {
                           <Switch 
                             value={selectedItem?.is_pinned} 
                             onValueChange={() => togglePin(selectedItem)}
-                            trackColor={{ false: '#2D2638', true: '#00FFCC' }}
+                            trackColor={{ false: '#2B3139', true: '#F0B90B' }}
                             thumbColor="#fff"
                           />
                       </TouchableOpacity>
@@ -305,12 +305,12 @@ export default function MyPortfolioScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   tabsContainer: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 15, gap: 10 },
-  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 12, backgroundColor: '#1A1625', borderWidth: 1, borderColor: '#2D2638' },
-  activeTab: { backgroundColor: '#00FFCC', borderColor: '#00FFCC' },
+  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 12, backgroundColor: '#1E2329', borderWidth: 1, borderColor: '#2B3139' },
+  activeTab: { backgroundColor: '#F0B90B', borderColor: '#F0B90B' },
   tabText: { color: '#A09BAF', fontWeight: '600', fontSize: 13 },
   activeTabText: { color: '#000' },
   gridContainer: { paddingHorizontal: 20, paddingBottom: 50 },
-  gridItem: { width: COLUMN_SIZE, height: COLUMN_SIZE * 1.3, borderRadius: 16, overflow: 'hidden', backgroundColor: '#2D2638', marginBottom: 10 },
+  gridItem: { width: COLUMN_SIZE, height: COLUMN_SIZE * 1.3, borderRadius: 16, overflow: 'hidden', backgroundColor: '#2B3139', marginBottom: 10 },
   media: { width: '100%', height: '100%' },
   
   badgesContainer: { position: 'absolute', bottom: 5, left: 5, flexDirection: 'row', gap: 4 },

@@ -78,6 +78,27 @@ export default function CategoryResultsScreen() {
             
             if (error) throw error;
 
+            // Получаем реальные рейтинги для специалистов
+            const specialistIds = data.map((item: any) => item.id);
+            let ratingMap: Record<string, number> = {};
+            if (specialistIds.length > 0) {
+                const { data: reviews } = await supabase
+                    .from('reviews')
+                    .select('target_id, rating')
+                    .in('target_id', specialistIds);
+                if (reviews) {
+                    const grouped = reviews.reduce((acc: any, r: any) => {
+                        if (!acc[r.target_id]) acc[r.target_id] = [];
+                        acc[r.target_id].push(r.rating);
+                        return acc;
+                    }, {});
+                    for (const [id, ratings] of Object.entries(grouped)) {
+                        const arr = ratings as number[];
+                        ratingMap[id] = arr.reduce((a: number, b: number) => a + b, 0) / arr.length;
+                    }
+                }
+            }
+
             const formatted = data.map((item: any) => ({
                 id: item.id,
                 full_name: item.profiles.full_name,
@@ -85,7 +106,7 @@ export default function CategoryResultsScreen() {
                 city: item.profiles.city,
                 experience_years: item.experience_years,
                 price_start: item.price_start,
-                avg_rating: 5.0,
+                avg_rating: ratingMap[item.id] || 0,
                 category_name: item.categories?.name
             }));
 
@@ -187,7 +208,7 @@ export default function CategoryResultsScreen() {
             contentContainerStyle={{ padding: 20, paddingBottom: 50 }}
             ListEmptyComponent={
                 <View style={styles.emptyState}>
-                     <Icon name="search" type="feather" size={60} color="#2D2638" />
+                     <Icon name="search" type="feather" size={60} color="#2B3139" />
             <Text style={{ color: theme.colors.grey2, marginTop: 15, fontWeight: '600' }}>
                 {items.length === 0 ? 'Никого нет' : 'Ничего не найдено'}
             </Text>
@@ -199,7 +220,7 @@ export default function CategoryResultsScreen() {
       {/* МОДАЛКА ФИЛЬТРОВ */}
       <Modal visible={filterModalVisible} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
-              <View style={[styles.modalContent, { backgroundColor: '#1A1625', paddingBottom: insets.bottom + 20 }]}>
+              <View style={[styles.modalContent, { backgroundColor: '#1E2329', paddingBottom: insets.bottom + 20 }]}>
                   <View style={styles.modalHeader}>
                       <Text style={styles.modalTitle}>Выберите навыки</Text>
                       <TouchableOpacity onPress={() => setFilterModalVisible(false)}><Icon name="x" type="feather" color="#A09BAF" /></TouchableOpacity>
@@ -226,7 +247,7 @@ export default function CategoryResultsScreen() {
       {/* МОДАЛКА СОРТИРОВКИ */}
       <Modal visible={sortModalVisible} transparent animationType="fade">
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSortModalVisible(false)}>
-              <View style={[styles.modalContent, { backgroundColor: '#1A1625', paddingBottom: insets.bottom + 20 }]}>
+              <View style={[styles.modalContent, { backgroundColor: '#1E2329', paddingBottom: insets.bottom + 20 }]}>
                   <Text style={styles.modalTitle}>Сортировка</Text>
                   {[
                       { label: 'По умолчанию', value: 'default' },
@@ -234,8 +255,8 @@ export default function CategoryResultsScreen() {
                       { label: 'Сначала дорогие', value: 'price_desc' },
                   ].map((opt) => (
                       <TouchableOpacity key={opt.value} style={styles.sortItem} onPress={() => { setSortBy(opt.value as any); setSortModalVisible(false); }}>
-                          <Text style={{ fontSize: 16, color: sortBy === opt.value ? '#00FFCC' : '#fff' }}>{opt.label}</Text>
-                          {sortBy === opt.value && <Icon name="check" type="feather" color="#00FFCC" />}
+                          <Text style={{ fontSize: 16, color: sortBy === opt.value ? '#F0B90B' : '#fff' }}>{opt.label}</Text>
+                          {sortBy === opt.value && <Icon name="check" type="feather" color="#F0B90B" />}
                       </TouchableOpacity>
                   ))}
               </View>
@@ -248,8 +269,8 @@ export default function CategoryResultsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 50 },
   topBar: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 10, gap: 10 },
-  controlBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, backgroundColor: '#1A1625', borderWidth: 1, borderColor: '#2D2638', gap: 8 },
-  activeBtn: { backgroundColor: '#00FFCC', borderColor: '#00FFCC' },
+  controlBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, backgroundColor: '#1E2329', borderWidth: 1, borderColor: '#2B3139', gap: 8 },
+  activeBtn: { backgroundColor: '#F0B90B', borderColor: '#F0B90B' },
   btnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
   emptyState: { alignItems: 'center', marginTop: 50 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
@@ -257,9 +278,9 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
   tagsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tagChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: '#2D2638', backgroundColor: '#121212' },
-  activeTagChip: { backgroundColor: '#00FFCC', borderColor: '#00FFCC' },
+  tagChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: '#2B3139', backgroundColor: '#121212' },
+  activeTagChip: { backgroundColor: '#F0B90B', borderColor: '#F0B90B' },
   tagText: { color: '#A09BAF', fontWeight: '600' },
-  applyBtn: { backgroundColor: '#00FFCC', paddingVertical: 15, borderRadius: 12, alignItems: 'center', marginTop: 20 },
-  sortItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#2D2638' }
+  applyBtn: { backgroundColor: '#F0B90B', paddingVertical: 15, borderRadius: 12, alignItems: 'center', marginTop: 20 },
+  sortItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#2B3139' }
 });

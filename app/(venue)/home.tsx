@@ -2,7 +2,7 @@
 import { Icon, Text, useTheme } from '@rneui/themed';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useState, useCallback } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, TouchableOpacity, View, BackHandler, Alert } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, TouchableOpacity, View, BackHandler, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserAvatar } from '../../components/UserAvatar';
 import { sendPushNotification } from '../../lib/push';
@@ -15,7 +15,6 @@ export default function VenueHome() {
   const insets = useSafeAreaInsets();
   
   const [bookings, setBookings] = useState<any[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
@@ -70,7 +69,12 @@ export default function VenueHome() {
                 <Text style={{ fontSize: 20, fontWeight: '900', color: theme.colors.black }}>{time}</Text>
                 <Text style={{ fontSize: 13, color: theme.colors.grey2, fontWeight: '600' }}>{date}</Text>
             </View>
-            <View style={styles.statusBadge}><Text style={styles.statusText}>{item.status.toUpperCase()}</Text></View>
+            <View style={[styles.statusBadge, { 
+                backgroundColor: item.status === 'confirmed' ? '#10B98120' : item.status === 'rejected' ? '#EF444420' : item.status === 'completed' ? '#3B82F620' : '#F59E0B20',
+                borderColor: item.status === 'confirmed' ? '#10B981' : item.status === 'rejected' ? '#EF4444' : item.status === 'completed' ? '#3B82F6' : '#F59E0B'
+            }]}><Text style={[styles.statusText, { 
+                color: item.status === 'confirmed' ? '#10B981' : item.status === 'rejected' ? '#EF4444' : item.status === 'completed' ? '#3B82F6' : '#F59E0B'
+            }]}>{item.status.toUpperCase()}</Text></View>
         </View>
 
         <View style={styles.clientRow}>
@@ -94,12 +98,19 @@ export default function VenueHome() {
                 </TouchableOpacity>
             </View>
         )}
+        {item.status === 'confirmed' && (
+            <View style={styles.actionRow}>
+                <TouchableOpacity style={[styles.btn, { backgroundColor: '#3B82F6', flex: 1 }]} onPress={() => updateStatus(item.id, item.client_id, 'completed')}>
+                    <Text style={{ color: '#fff', fontWeight: '800' }}>ЗАВЕРШИТЬ</Text>
+                </TouchableOpacity>
+            </View>
+        )}
       </View>
     );
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: '#0F172A', paddingTop: insets.top + 10 }]}>
+    <View style={[styles.container, { backgroundColor: '#0B0E11', paddingTop: insets.top + 10 }]}>
       <View style={styles.header}>
         <View>
             <Text style={{ color: theme.colors.grey2, fontWeight: '600', textTransform: 'uppercase', fontSize: 11 }}>Управление</Text>
@@ -119,6 +130,13 @@ export default function VenueHome() {
         renderItem={renderItem}
         contentContainerStyle={{ padding: 20 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchBookings(); }} tintColor="#10B981" />}
+        ListEmptyComponent={
+            <View style={{ alignItems: 'center', marginTop: 80 }}>
+                <Icon name="calendar" type="feather" size={50} color="#2B3139" />
+                <Text style={{ color: '#6B6675', marginTop: 15, fontWeight: '600', fontSize: 16 }}>Нет бронирований</Text>
+                <Text style={{ color: '#4B5563', marginTop: 5, fontSize: 13 }}>Заявки появятся здесь</Text>
+            </View>
+        }
       />
     </View>
   );

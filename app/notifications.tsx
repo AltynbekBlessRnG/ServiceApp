@@ -67,7 +67,7 @@ export default function NotificationsScreen() {
       const style = getIconInfo(item.title);
       
       return (
-        <View style={[styles.item, { backgroundColor: '#1A1625', borderColor: '#2D2638' }]}>
+        <View style={[styles.item, { backgroundColor: '#1E2329', borderColor: '#2B3139' }]}>
             {/* Иконка */}
             <View style={[styles.iconBox, { backgroundColor: style.bg }]}>
                 <Icon name={style.name} type="feather" size={22} color={style.color} />
@@ -104,7 +104,7 @@ export default function NotificationsScreen() {
       </View>
 
       {loading && !refreshing ? (
-        <ActivityIndicator size="large" color="#8A2BE2" style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" color="#F0B90B" style={{ marginTop: 50 }} />
       ) : (
         <FlatList
             data={items}
@@ -113,7 +113,7 @@ export default function NotificationsScreen() {
                 <RefreshControl 
                     refreshing={refreshing} 
                     onRefresh={() => { setRefreshing(true); fetchNotifications(); }} 
-                    tintColor="#8A2BE2" 
+                    tintColor="#F0B90B" 
                 />
             }
             ListEmptyComponent={
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     
     // Header
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
-    backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1A1625', borderRadius: 12, borderWidth: 1, borderColor: '#2D2638' },
+    backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1E2329', borderRadius: 12, borderWidth: 1, borderColor: '#2B3139' },
     headerTitle: { color: '#fff', fontWeight: '900', letterSpacing: 0.5 },
 
     // Item
@@ -165,10 +165,10 @@ const styles = StyleSheet.create({
     emptyIconCircle: { 
         width: 80, height: 80, 
         borderRadius: 40, 
-        backgroundColor: '#1A1625', 
+        backgroundColor: '#1E2329', 
         justifyContent: 'center', alignItems: 'center',
         marginBottom: 20,
-        borderWidth: 1, borderColor: '#2D2638'
+        borderWidth: 1, borderColor: '#2B3139'
     },
     emptyTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
     emptyText: { color: '#6B6675', fontSize: 14 }
