@@ -60,9 +60,14 @@ export default function ClientHome() {
             {user?.user_metadata?.full_name?.split(' ')[0] || 'Гость'} 👋
           </Text>
         </View>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/(client)/favorites')}>
-          <Icon name="heart" type="feather" color="#848E9C" size={20} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/(client)/favorites')}>
+            <Icon name="heart" type="feather" color="#848E9C" size={20} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/notifications')}>
+            <Icon name="bell" type="feather" color="#848E9C" size={20} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <TouchableOpacity

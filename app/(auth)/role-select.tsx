@@ -69,14 +69,14 @@ export default function RoleSelectScreen() {
         <Text h2 style={{ color: '#fff', fontWeight: '900', textAlign: 'center', marginBottom: 10 }}>
           Кто вы?
         </Text>
-        <Text style={{ color: '#A09BAF', textAlign: 'center', fontSize: 16 }}>
+        <Text style={{ color: '#848E9C', textAlign: 'center', fontSize: 16 }}>
           Выберите режим использования
         </Text>
       </View>
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#8A2BE2" />
+          <ActivityIndicator size="large" color="#F0B90B" />
           <Text style={{ color: '#fff', marginTop: 20, fontWeight: '600' }}>Настройка аккаунта...</Text>
         </View>
       ) : (
@@ -86,7 +86,7 @@ export default function RoleSelectScreen() {
             title="Я клиент"
             desc="Ищу услуги, мастеров и удобное время для записи."
             icon="search"
-            color="#00FFCC"
+            color="#F0B90B"
           />
 
           <RoleCard
@@ -94,15 +94,15 @@ export default function RoleSelectScreen() {
             title="Я специалист"
             desc="Веду профиль, расписание, портфолио и принимаю записи."
             icon="briefcase"
-            color="#8A2BE2"
+            color="#FAFAFA"
           />
 
           <RoleCard
             role="venue"
             title="Я заведение"
-            desc="Оставить в проекте для следующего этапа стабилизации."
+            desc="Управление объектами, бронированиями и гостями."
             icon="map-pin"
-            color="#FF4757"
+            color="#848E9C"
           />
         </View>
       )}
@@ -117,14 +117,11 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A1625',
+    backgroundColor: '#1E2329',
     padding: 20,
-    borderRadius: 24,
+    borderRadius: 16,
     borderWidth: 1,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 5,
+    borderColor: '#2B3139',
   },
   iconBox: {
     width: 60,
@@ -135,5 +132,5 @@ const styles = StyleSheet.create({
     marginRight: 20,
   },
   cardTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
-  cardDesc: { color: '#A09BAF', fontSize: 13, lineHeight: 18 },
+  cardDesc: { color: '#848E9C', fontSize: 13, lineHeight: 18 },
 });

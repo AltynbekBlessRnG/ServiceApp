@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flexGrow: 1, justifyContent: 'center', padding: 20, paddingBottom: 32 },
   title: { marginBottom: 30, textAlign: 'center' },
-  button: { backgroundColor: '#2089dc', borderRadius: 10, marginTop: 10, paddingVertical: 12 },
+  button: { backgroundColor: '#F0B90B', borderRadius: 10, marginTop: 10, paddingVertical: 12 },
   linkContainer: { marginTop: 20, alignItems: 'center' },
-  linkText: { color: '#2089dc' },
+  linkText: { color: '#F0B90B' },
 });
