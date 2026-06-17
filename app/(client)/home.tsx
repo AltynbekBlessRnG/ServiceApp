@@ -40,7 +40,7 @@ export default function ClientHome() {
     >
       <View style={styles.mainCardHeader}>
         <View style={styles.mainCardIconBox}>
-          <Icon name={item.icon} type="feather" size={22} color="#F0B90B" />
+          <Icon name={item.icon} type="feather" size={26} color="#F0B90B" />
         </View>
         <Icon name="chevron-right" type="feather" size={16} color="#848E9C" />
       </View>
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     width: CARD_WIDTH,
     backgroundColor: '#1E2329',
     borderRadius: 12,
-    padding: 16,
+    padding: 18,
     marginBottom: CARD_GAP,
     borderWidth: 1,
     borderColor: '#2B3139',
@@ -213,13 +213,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   mainCardIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     backgroundColor: 'rgba(240, 185, 11, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  mainCardTitle: { color: '#FAFAFA', fontSize: 15, fontWeight: '800', marginBottom: 6 },
-  mainCardSub: { color: '#848E9C', fontSize: 12, lineHeight: 17, fontWeight: '500' },
+  mainCardTitle: { color: '#FAFAFA', fontSize: 16, fontWeight: '800', marginBottom: 6 },
+  mainCardSub: { color: '#848E9C', fontSize: 13, lineHeight: 18, fontWeight: '500' },
 });

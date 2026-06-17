@@ -38,10 +38,16 @@ export default function PersonalChatScreen() {
     const channel = supabase.channel(`chat:${channelId}`)
       .on('postgres_changes', { 
           event: 'INSERT', schema: 'public', table: 'messages',
-          filter: `receiver_id=eq.${user.id}` 
       }, (payload) => {
-          if (payload.new.sender_id === receiverId) {
-             setMessages((prev) => [payload.new, ...prev]); 
+          const msg = payload.new;
+          const isRelevant = 
+            (msg.sender_id === user.id && msg.receiver_id === receiverId) ||
+            (msg.sender_id === receiverId && msg.receiver_id === user.id);
+          if (isRelevant) {
+             setMessages((prev) => {
+               if (prev.some(m => m.id === msg.id)) return prev;
+               return [msg, ...prev];
+             }); 
           }
       })
       .subscribe();
