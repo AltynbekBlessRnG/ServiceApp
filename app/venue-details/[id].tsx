@@ -18,7 +18,9 @@ import {
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { showToast } from '../../components/AppToast';
 import { supabase } from '../../lib/supabase';
+import { sendPushNotification } from '../../lib/push';
 import { useAuth } from '../../providers/AuthProvider';
 
 const zoneLabelMap: Record<string, string> = {
@@ -214,13 +216,14 @@ export default function VenueDetailScreen() {
 
       if (error) throw error;
 
-      Alert.alert('Готово', 'Заявка на бронь отправлена');
+      showToast({ type: 'success', title: 'Бронь отправлена!', message: 'Заведение получит уведомление' });
       setModalVisible(false);
       setBookingMessage('');
       setCheckInDate('');
       setCheckOutDate('');
+      await sendPushNotification(venueId, 'Новая заявка на бронь! 🏨', `${user.user_metadata?.full_name || 'Гость'} хочет забронировать на ${checkInDate} — ${checkOutDate}`);
     } catch (error: any) {
-      Alert.alert('Ошибка', error.message);
+      showToast({ type: 'error', title: 'Ошибка', message: error.message });
     } finally {
       setSubmitting(false);
     }

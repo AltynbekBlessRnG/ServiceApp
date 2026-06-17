@@ -15,9 +15,11 @@ import {
 import { Calendar } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '../../components/AppHeader';
+import { showToast } from '../../components/AppToast';
 import { UserAvatar } from '../../components/UserAvatar';
 import { useHaptics } from '../../hooks/useHaptics';
 import { supabase } from '../../lib/supabase';
+import { sendPushNotification } from '../../lib/push';
 import { useAuth } from '../../providers/AuthProvider';
 
 const { width } = Dimensions.get('window');
@@ -115,8 +117,13 @@ export default function SpecialistDetailScreen() {
     setBookingLoading(true);
     const { error } = await supabase.from('bookings').insert({ client_id: user.id, specialist_id: targetId, date_time: `${selectedDate} ${selectedTime}`, message: bookingMessage, status: 'pending' });
     setBookingLoading(false);
-    if (!error) { haptics.success(); Alert.alert("Успешно", "Заявка отправлена!"); setModalVisible(false); setBookingMessage(''); } 
-    else { haptics.error(); Alert.alert("Ошибка", error.message); }
+    if (!error) { 
+      haptics.success(); 
+      showToast({ type: 'success', title: 'Заявка отправлена!', message: 'Специалист получит уведомление' }); 
+      setModalVisible(false); setBookingMessage(''); 
+      await sendPushNotification(targetId, 'Новая заявка! 📋', `${user.user_metadata?.full_name || 'Клиент'} хочет записаться на ${selectedDate} в ${selectedTime}`);
+    } 
+    else { haptics.error(); showToast({ type: 'error', title: 'Ошибка', message: error.message }); }
   }
 
   async function toggleFavorite() {

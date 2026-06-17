@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ToastProvider } from '../components/AppToast';
 import { AuthProvider } from '../providers/AuthProvider';
 
 export default function RootLayout() {
@@ -52,6 +53,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider theme={theme}>
+        <ToastProvider />
         <AuthProvider>
           <StatusBar barStyle="light-content" backgroundColor={bgColor} />
           <View style={{ flex: 1, backgroundColor: bgColor }}>

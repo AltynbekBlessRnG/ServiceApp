@@ -43,7 +43,22 @@ export default function VenueHome() {
   async function updateStatus(id: string, clientId: string, status: string) {
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
     await supabase.from('bookings').update({ status }).eq('id', id);
-    await sendPushNotification(clientId, 'Nexus Update', 'Статус вашей брони изменен.');
+
+    let title = '';
+    let body = '';
+    if (status === 'confirmed') {
+      title = 'Бронь подтверждена! ✅';
+      body = 'Заведение приняло вашу заявку. Ждем вас!';
+    } else if (status === 'rejected') {
+      title = 'Бронь отклонена ❌';
+      body = 'К сожалению, заведение не может принять вас в это время.';
+    } else if (status === 'completed') {
+      title = 'Бронь завершена 🎉';
+      body = 'Спасибо, что выбрали нас! Не забудьте оставить отзыв.';
+    }
+    if (title && clientId) {
+      await sendPushNotification(clientId, title, body);
+    }
   }
 
   const renderItem = ({ item }: { item: any }) => {

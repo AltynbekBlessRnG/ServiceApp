@@ -14,6 +14,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
+import { sendPushNotification } from '../../lib/push';
+import { showToast } from '../../components/AppToast';
 import { useAuth } from '../../providers/AuthProvider';
 
 export default function SpecialistHome() {
@@ -81,12 +83,8 @@ export default function SpecialistHome() {
 
     // Отправляем уведомление (если есть текст и ID клиента)
     if (title && clientId) {
-        await supabase.from('notifications').insert({
-            user_id: clientId,
-            title: title,
-            body: body,
-            is_read: false
-        });
+        await sendPushNotification(clientId, title, body);
+        showToast({ type: status === 'confirmed' ? 'success' : status === 'rejected' ? 'error' : 'info', title, message: body });
     }
   }
 
