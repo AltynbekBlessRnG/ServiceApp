@@ -40,10 +40,15 @@ run('normalizes a rest endpoint into the project URL', () => {
   assert.equal(getRequiredEnv('EXPO_PUBLIC_SUPABASE_URL', env), 'https://example.supabase.co');
 });
 
-run('throws a helpful error when a required environment value is missing', () => {
+run('returns fallback when env is missing for known variables', () => {
+  const result = getRequiredEnv('EXPO_PUBLIC_SUPABASE_URL', {});
+  assert.ok(result.includes('supabase.co'), 'Should return fallback Supabase URL');
+});
+
+run('throws for unknown env variables with no fallback', () => {
   assert.throws(
-    () => getRequiredEnv('EXPO_PUBLIC_SUPABASE_URL', {}),
-    /Missing required environment variable: EXPO_PUBLIC_SUPABASE_URL/
+    () => getRequiredEnv('UNKNOWN_VARIABLE', {}),
+    /Missing required environment variable: UNKNOWN_VARIABLE/
   );
 });
 

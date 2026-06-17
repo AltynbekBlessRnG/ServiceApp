@@ -1,5 +1,4 @@
 import { Icon, Text, useTheme } from '@rneui/themed';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Dimensions, FlatList, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -8,66 +7,24 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const COLUMN_WIDTH = (SCREEN_WIDTH - 60) / 3;
+const PADDING = 20;
+const CARD_GAP = 12;
+const CARD_WIDTH = (SCREEN_WIDTH - PADDING * 2 - CARD_GAP) / 2;
 
-const CATEGORY_ORDER = [
-  'Барберы',
-  'Маникюр',
-  'Макияж',
-  'Массаж',
-  'Репетиторы',
-  'Фотографы',
-  'IT и диджитал',
-  'Автоуслуги',
-  'Дизайн и реклама',
-  'Ивенты и праздники',
-  'Клининг и дом',
-  'Медицина',
-  'Ремонт и стройка',
-  'Салоны красоты',
-  'Фото и видео',
-  'Юридические услуги',
-  'Трансфер',
-  'Детские услуги',
-  'Развлечения и аренда',
-  'Барбершопы',
-  'Кофейни',
-  'Фотостудии',
-  'Зоны отдыха',
-  'Пансионаты',
-  'Гостевые дома',
-  'Коттеджи',
+const MAIN_CATEGORIES = [
+  { key: 'beauty', label: 'Красота', icon: 'heart', sub: ['Барбершопы', 'Салоны красоты', 'Массаж', 'Маникюр', 'Макияж'] },
+  { key: 'auto', label: 'Авто', icon: 'truck', sub: ['Детейлинг', 'СТО', 'Аренда авто', 'Трансфер'] },
+  { key: 'events', label: 'Мероприятия', icon: 'gift', sub: ['Ведущие', 'Фотографы', 'Музыканты', 'Тамада'] },
+  { key: 'leisure', label: 'Отдых', icon: 'sun', sub: ['Зоны отдыха', 'Глэмпинги', 'Отели', 'Коттеджи'] },
+  { key: 'business', label: 'Бизнес', icon: 'trending-up', sub: ['SMM', 'Таргетолог', 'Маркетолог', 'Консалтинг'] },
+  { key: 'legal', label: 'Юристы', icon: 'briefcase', sub: ['Юрист', 'Адвокат', 'Бухгалтер'] },
+  { key: 'education', label: 'Образование', icon: 'book-open', sub: ['Репетиторы', 'Курсы', 'Языки'] },
+  { key: 'home', label: 'Дом и ремонт', icon: 'home', sub: ['Клининг', 'Ремонт', 'Дизайн интерьера'] },
 ];
 
 const isReadableCategoryName = (name: string) => {
   if (!name) return false;
   return name.trim().length > 0;
-};
-
-const getCategoryStyle = (name: string) => {
-  const n = name.toLowerCase();
-  if (n.includes('it') || n.includes('диджитал')) return { icon: 'monitor', color: '#00D2D3' };
-  if (n.includes('авто') || n.includes('машин')) return { icon: 'tool', color: '#FF4757' };
-  if (n.includes('барбер') || n.includes('стриж')) return { icon: 'scissors', color: '#2ED573' };
-  if (n.includes('маникюр')) return { icon: 'edit-3', color: '#E056FD' };
-  if (n.includes('макияж')) return { icon: 'smile', color: '#FF6B81' };
-  if (n.includes('массаж')) return { icon: 'heart', color: '#00D2D3' };
-  if (n.includes('дизайн') || n.includes('реклам')) return { icon: 'pen-tool', color: '#FFA502' };
-  if (n.includes('ивент') || n.includes('праздник')) return { icon: 'gift', color: '#FF6B81' };
-  if (n.includes('клининг') || n.includes('уборк') || n === 'клининг и дом') return { icon: 'home', color: '#7BED9F' };
-  if (n.includes('мед')) return { icon: 'activity', color: '#FF6348' };
-  if (n.includes('репетитор')) return { icon: 'book-open', color: '#1E90FF' };
-  if (n.includes('ремонт') || n.includes('строй')) return { icon: 'layers', color: '#A55EEA' };
-  if (n.includes('салон') || n.includes('красот')) return { icon: 'smile', color: '#E056FD' };
-  if (n.includes('фото') || n.includes('видео') || n.includes('фотограф')) return { icon: 'camera', color: '#3742FA' };
-  if (n.includes('юрид')) return { icon: 'briefcase', color: '#5352ED' };
-  if (n.includes('трансфер')) return { icon: 'navigation', color: '#00D2D3' };
-  if (n.includes('дет')) return { icon: 'users', color: '#FF6B81' };
-  if (n.includes('развлеч')) return { icon: 'sun', color: '#FFA502' };
-  if (n.includes('зоны отдыха') || n.includes('пансион')) return { icon: 'umbrella', color: '#00D2D3' };
-  if (n.includes('гостевые дома') || n.includes('коттеджи')) return { icon: 'home', color: '#7BED9F' };
-  if (n.includes('кофейн')) return { icon: 'coffee', color: '#FFA502' };
-  return { icon: 'grid', color: '#00FFCC' };
 };
 
 export default function ClientHome() {
@@ -80,18 +37,7 @@ export default function ClientHome() {
   const fetchCategories = useCallback(async () => {
     const { data } = await supabase.from('categories').select('*').eq('type', mode);
     if (!data) return;
-
-    const cleanCategories = data
-      .filter((category) => isReadableCategoryName(category.name))
-      .sort((a, b) => {
-        const aIndex = CATEGORY_ORDER.indexOf(a.name);
-        const bIndex = CATEGORY_ORDER.indexOf(b.name);
-        if (aIndex !== -1 || bIndex !== -1) {
-          return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
-        }
-        return a.name.localeCompare(b.name, 'ru');
-      });
-
+    const cleanCategories = data.filter((c) => isReadableCategoryName(c.name));
     setCategories(cleanCategories);
   }, [mode]);
 
@@ -99,56 +45,82 @@ export default function ClientHome() {
     fetchCategories();
   }, [fetchCategories]);
 
+  const renderMainCategory = ({ item }: { item: typeof MAIN_CATEGORIES[0] }) => (
+    <TouchableOpacity
+      style={styles.mainCard}
+      activeOpacity={0.7}
+      onPress={() => {
+        const firstSub = categories.find(c => item.sub.some(s => c.name.toLowerCase().includes(s.toLowerCase())));
+        if (firstSub) {
+          router.push({ pathname: '/(client)/category-results', params: { id: firstSub.id, name: item.label, type: mode } } as any);
+        }
+      }}
+    >
+      <View style={styles.mainCardHeader}>
+        <View style={styles.mainCardIconBox}>
+          <Icon name={item.icon} type="feather" size={22} color="#F0B90B" />
+        </View>
+        <Icon name="chevron-right" type="feather" size={16} color="#848E9C" />
+      </View>
+      <Text style={styles.mainCardTitle}>{item.label}</Text>
+      <Text style={styles.mainCardSub} numberOfLines={2}>
+        {item.sub.join(' · ')}
+      </Text>
+    </TouchableOpacity>
+  );
+
   const ListHeader = () => (
     <View style={styles.headerContainer}>
       <View style={styles.welcomeRow}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.greeting}>Добро пожаловать!</Text>
+          <Text style={styles.greeting}>Привет,</Text>
           <Text h4 style={styles.name}>
-            {user?.user_metadata?.full_name?.split(' ')[0] || 'Гость'}
+            {user?.user_metadata?.full_name?.split(' ')[0] || 'Гость'} 👋
           </Text>
         </View>
-
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/(client)/favorites')}>
-            <Icon name="heart" type="feather" color="#fff" size={22} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/notifications')}>
-            <Icon name="bell" type="feather" color="#fff" size={22} />
-            <View style={styles.redDot} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.headerBtn} onPress={() => router.push('/(client)/favorites')}>
+          <Icon name="heart" type="feather" color="#848E9C" size={20} />
+        </TouchableOpacity>
       </View>
 
-      <TouchableOpacity onPress={() => router.push('/(client)/alakol' as any)} activeOpacity={0.9} style={{ marginBottom: 18 }}>
-        <LinearGradient colors={['#0EA5E9', '#14B8A6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.alakolBanner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.alakolTitle}>АЛАКОЛЬ 2026</Text>
-            <Text style={styles.alakolSub}>Акши, Коктума, Ушарал. Где жить и услуги рядом.</Text>
-          </View>
-          <Icon name="map-pin" type="feather" color="#fff" size={30} />
-        </LinearGradient>
+      <TouchableOpacity
+        onPress={() => router.push('/(client)/ai-search')}
+        activeOpacity={0.8}
+        style={styles.searchBox}
+      >
+        <Icon name="search" type="feather" size={18} color="#848E9C" />
+        <Text style={styles.searchPlaceholder}>Найти услугу или специалиста</Text>
+        <View style={styles.aiBadge}>
+          <Icon name="zap" type="feather" size={12} color="#0B0E11" />
+        </View>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push('/(client)/ai-search')} activeOpacity={0.9} style={{ marginBottom: 25 }}>
-        <LinearGradient colors={['#8A2BE2', '#00FFCC']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.aiBanner}>
-          <View style={styles.aiContent}>
-            <Text style={styles.aiTitle}>AI ПОИСК</Text>
-            <Text style={styles.aiSub}>Найдите любую услугу мгновенно</Text>
-          </View>
-          <Icon name="zap" type="feather" color="#fff" size={32} />
-        </LinearGradient>
+      <TouchableOpacity onPress={() => router.push('/(client)/alakol' as any)} activeOpacity={0.9} style={styles.promoBanner}>
+        <View style={styles.promoContent}>
+          <Text style={styles.promoLabel}>АЛАКОЛЬ 2026</Text>
+          <Text style={styles.promoText}>Акши, Коктума, Ушарал</Text>
+        </View>
+        <Icon name="chevron-right" type="feather" size={18} color="#848E9C" />
       </TouchableOpacity>
 
       <View style={styles.modeToggle}>
         {(['specialist', 'venue'] as const).map((m) => (
           <TouchableOpacity key={m} style={[styles.modeBtn, mode === m && styles.modeBtnActive]} onPress={() => setMode(m)}>
-            <Text style={[styles.modeText, { color: mode === m ? '#00FFCC' : '#6B6675' }]}>
-              {m === 'specialist' ? 'МАСТЕРА' : 'ЗАВЕДЕНИЯ'}
+            <Icon
+              name={m === 'specialist' ? 'user' : 'map-pin'}
+              type="feather"
+              size={14}
+              color={mode === m ? '#0B0E11' : '#848E9C'}
+            />
+            <Text style={[styles.modeText, { color: mode === m ? '#0B0E11' : '#848E9C' }]}>
+              {m === 'specialist' ? 'Мастера' : 'Заведения'}
             </Text>
           </TouchableOpacity>
         ))}
+      </View>
+
+      <View style={styles.sectionRow}>
+        <Text style={styles.sectionTitle}>Категории</Text>
       </View>
     </View>
   );
@@ -156,31 +128,14 @@ export default function ClientHome() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle="light-content" />
-
       <FlatList
-        data={categories}
-        keyExtractor={(item) => item.id.toString()}
-        numColumns={3}
+        data={MAIN_CATEGORIES}
+        keyExtractor={(item) => item.key}
+        numColumns={2}
         ListHeaderComponent={ListHeader}
         columnWrapperStyle={styles.columnWrapper}
-        contentContainerStyle={{ paddingTop: insets.top + 10, paddingHorizontal: 20, paddingBottom: 100 }}
-        renderItem={({ item }) => {
-          const style = getCategoryStyle(item.name);
-          return (
-            <TouchableOpacity
-              style={styles.catItem}
-              onPress={() => router.push({ pathname: '/(client)/category-results', params: { id: item.id, name: item.name, type: mode } } as any)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.catIconBox, { borderColor: style.color + '40', shadowColor: style.color }]}>
-                <Icon name={style.icon} type="feather" size={32} color={style.color} />
-              </View>
-              <Text style={styles.catLabel} numberOfLines={2}>
-                {item.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        }}
+        contentContainerStyle={{ paddingTop: insets.top + 10, paddingHorizontal: PADDING, paddingBottom: 100 }}
+        renderItem={renderMainCategory}
       />
     </View>
   );
@@ -188,25 +143,101 @@ export default function ClientHome() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  headerContainer: { paddingBottom: 10 },
-  welcomeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25, marginTop: 10 },
-  greeting: { color: '#A09BAF', fontSize: 14, fontWeight: '500' },
-  name: { color: '#FFF', fontWeight: '900' },
-  headerBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#1A1625', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#2D2638' },
-  redDot: { position: 'absolute', top: 10, right: 12, width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF0055' },
-  alakolBanner: { padding: 20, borderRadius: 24, flexDirection: 'row', alignItems: 'center' },
-  alakolTitle: { color: '#fff', fontSize: 22, fontWeight: '900' },
-  alakolSub: { color: 'rgba(255,255,255,0.9)', fontSize: 13, marginTop: 4, fontWeight: '500' },
-  aiBanner: { padding: 24, borderRadius: 24, flexDirection: 'row', alignItems: 'center', shadowColor: '#8A2BE2', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
-  aiContent: { flex: 1 },
-  aiTitle: { color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: 1, fontStyle: 'italic' },
-  aiSub: { color: 'rgba(255,255,255,0.9)', fontSize: 13, marginTop: 4, fontWeight: '500' },
-  modeToggle: { flexDirection: 'row', backgroundColor: '#1A1625', borderRadius: 16, padding: 4, marginBottom: 25, borderWidth: 1, borderColor: '#2D2638' },
-  modeBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 12 },
-  modeBtnActive: { backgroundColor: '#2D2638' },
-  modeText: { fontWeight: '800', fontSize: 12, letterSpacing: 0.5 },
-  columnWrapper: { gap: 15 },
-  catItem: { width: COLUMN_WIDTH, marginBottom: 20, alignItems: 'center' },
-  catIconBox: { width: '100%', aspectRatio: 1, borderRadius: 22, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1A1625', borderWidth: 1.5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 5 },
-  catLabel: { fontSize: 12, fontWeight: '600', textAlign: 'center', marginTop: 10, color: '#E2E8F0' },
+  headerContainer: { paddingBottom: 5 },
+  welcomeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 5,
+  },
+  greeting: { color: '#848E9C', fontSize: 14, fontWeight: '500' },
+  name: { color: '#FAFAFA', fontWeight: '800', fontSize: 22 },
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#1E2329',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E2329',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#2B3139',
+  },
+  searchPlaceholder: { flex: 1, marginLeft: 10, color: '#848E9C', fontSize: 14, fontWeight: '500' },
+  aiBadge: {
+    backgroundColor: '#F0B90B',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  promoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E2329',
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#2B3139',
+  },
+  promoContent: { flex: 1 },
+  promoLabel: { color: '#F0B90B', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
+  promoText: { color: '#848E9C', fontSize: 13, marginTop: 2, fontWeight: '500' },
+  modeToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#1E2329',
+    borderRadius: 10,
+    padding: 3,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#2B3139',
+  },
+  modeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    gap: 6,
+  },
+  modeBtnActive: { backgroundColor: '#F0B90B' },
+  modeText: { fontWeight: '700', fontSize: 13 },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  sectionTitle: { color: '#FAFAFA', fontSize: 16, fontWeight: '800' },
+  columnWrapper: { gap: CARD_GAP },
+  mainCard: {
+    width: CARD_WIDTH,
+    backgroundColor: '#1E2329',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: CARD_GAP,
+    borderWidth: 1,
+    borderColor: '#2B3139',
+  },
+  mainCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  mainCardIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: 'rgba(240, 185, 11, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mainCardTitle: { color: '#FAFAFA', fontSize: 15, fontWeight: '800', marginBottom: 6 },
+  mainCardSub: { color: '#848E9C', fontSize: 12, lineHeight: 17, fontWeight: '500' },
 });

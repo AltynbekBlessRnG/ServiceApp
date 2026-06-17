@@ -30,7 +30,7 @@ export default function CreditsScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.logoSection}>
-          <View style={[styles.logoBox, { backgroundColor: theme.colors.primary, shadowColor: theme.colors.primary }]}>
+          <View style={[styles.logoBox, { backgroundColor: '#F0B90B', shadowColor: '#F0B90B' }]}>
             <Icon name="sparkles" type="feather" color="#fff" size={40} />
           </View>
 
@@ -74,12 +74,12 @@ export default function CreditsScreen() {
 
         <View style={styles.divider} />
 
-        <View style={[styles.devCard, { borderColor: theme.colors.primary }]}>
+        <View style={[styles.devCard, { borderColor: '#F0B90B' }]}>
           <Text style={styles.devLabel}>FOUNDER</Text>
           <Text h4 style={{ color: theme.colors.black, fontWeight: '900', marginBottom: 5 }}>
             Шалгимбаев Ернар Донесбайулы
           </Text>
-          <Text style={{ color: theme.colors.primary, fontWeight: '700', marginBottom: 15 }}>
+          <Text style={{ color: '#F0B90B', fontWeight: '700', marginBottom: 15 }}>
             Основатель
           </Text>
           <Text style={{ color: theme.colors.grey2, textAlign: 'center', lineHeight: 20, fontSize: 13 }}>
@@ -87,12 +87,12 @@ export default function CreditsScreen() {
           </Text>
         </View>
 
-        <View style={[styles.devCard, { borderColor: theme.colors.secondary, marginTop: 15 }]}>
+        <View style={[styles.devCard, { borderColor: '#2B3139', marginTop: 15 }]}>
           <Text style={styles.devLabel}>CREATED BY</Text>
           <Text h4 style={{ color: theme.colors.black, fontWeight: '900', marginBottom: 5 }}>
             Altynbek Temirkhan
           </Text>
-          <Text style={{ color: theme.colors.secondary, fontWeight: '700', marginBottom: 15 }}>
+          <Text style={{ color: '#848E9C', fontWeight: '700', marginBottom: 15 }}>
             Full Stack Engineer
           </Text>
           <Text style={{ color: theme.colors.grey2, textAlign: 'center', lineHeight: 20, fontSize: 13 }}>
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderStyle: 'dashed',
-    backgroundColor: 'rgba(138, 43, 226, 0.05)',
+    backgroundColor: 'rgba(240, 185, 11, 0.05)',
   },
   devLabel: { fontSize: 10, fontWeight: '900', color: 'gray', marginBottom: 10, letterSpacing: 2 },
   socialRow: { flexDirection: 'row', marginTop: 20, gap: 15 },

@@ -7,20 +7,19 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '../providers/AuthProvider';
 
 export default function RootLayout() {
-  // 💜 ТОТ САМЫЙ КРАСИВЫЙ ФОН (Deep Void)
-  const bgColor = '#0F0C15'; 
+  const bgColor = '#0B0E11';
 
   const myColors = {
-    primary: '#8A2BE2',   // Неоновый фиолетовый
-    secondary: '#00FFCC', // Неоновая мята
+    primary: '#F0B90B',
+    secondary: '#FCD535',
     background: bgColor,
-    grey0: '#1A1625',     // Карточки (с фиолетовым оттенком)
-    grey1: '#2D2638',     // Границы (темно-фиолетовые)
-    grey2: '#A09BAF',     // Текст (серо-фиолетовый)
-    grey3: '#6B6675',
-    black: '#FFFFFF',     // Текст заголовков
+    grey0: '#1E2329',
+    grey1: '#2B3139',
+    grey2: '#848E9C',
+    grey3: '#5E6673',
+    black: '#FFFFFF',
     white: bgColor,
-    error: '#FF0055',     // Неоновый красный
+    error: '#F6465D',
   };
 
   const theme = createTheme({
@@ -29,20 +28,20 @@ export default function RootLayout() {
     darkColors: myColors,
     components: {
       Button: {
-        buttonStyle: { borderRadius: 12, height: 56 }, // Убрал принудительный зеленый, пусть берет primary
-        titleStyle: { fontWeight: '700', fontSize: 16 }
+        buttonStyle: { borderRadius: 8, height: 48 },
+        titleStyle: { fontWeight: '700', fontSize: 15 }
       },
       Input: {
-        inputContainerStyle: { 
-          borderBottomWidth: 0, 
-          backgroundColor: '#1A1625', 
-          borderRadius: 12, 
-          paddingHorizontal: 15,
+        inputContainerStyle: {
+          borderBottomWidth: 0,
+          backgroundColor: '#1E2329',
+          borderRadius: 8,
+          paddingHorizontal: 14,
           borderWidth: 1,
-          borderColor: '#2D2638'
+          borderColor: '#2B3139'
         },
-        inputStyle: { color: '#FFFFFF' },
-        labelStyle: { color: '#00FFCC', marginBottom: 5, fontSize: 12, fontWeight: '700' }
+        inputStyle: { color: '#FFFFFF', fontSize: 14 },
+        placeholderTextColor: '#848E9C'
       },
       Text: {
         style: { color: '#FFFFFF' }
@@ -54,13 +53,13 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider theme={theme}>
         <AuthProvider>
-          <StatusBar style="light" backgroundColor={bgColor} />
+          <StatusBar barStyle="light-content" backgroundColor={bgColor} />
           <View style={{ flex: 1, backgroundColor: bgColor }}>
-            <Stack screenOptions={{ 
-                headerShown: false, 
-                contentStyle: { backgroundColor: bgColor },
-                animation: 'fade_from_bottom' ,
-                gestureEnabled: false
+            <Stack screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: bgColor },
+              animation: 'fade',
+              gestureEnabled: false
             }}>
               <Stack.Screen name="index" />
               <Stack.Screen name="(auth)" />
