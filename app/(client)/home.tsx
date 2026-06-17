@@ -1,9 +1,8 @@
 import { Icon, Text, useTheme } from '@rneui/themed';
 import { router } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Dimensions, FlatList, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -22,38 +21,21 @@ const MAIN_CATEGORIES = [
   { key: 'home', label: 'Дом и ремонт', icon: 'home', sub: ['Клининг', 'Ремонт', 'Дизайн интерьера'] },
 ];
 
-const isReadableCategoryName = (name: string) => {
-  if (!name) return false;
-  return name.trim().length > 0;
-};
-
 export default function ClientHome() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  const [categories, setCategories] = useState<any[]>([]);
   const [mode, setMode] = useState<'specialist' | 'venue'>('specialist');
-
-  const fetchCategories = useCallback(async () => {
-    const { data } = await supabase.from('categories').select('*').eq('type', mode);
-    if (!data) return;
-    const cleanCategories = data.filter((c) => isReadableCategoryName(c.name));
-    setCategories(cleanCategories);
-  }, [mode]);
-
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
 
   const renderMainCategory = ({ item }: { item: typeof MAIN_CATEGORIES[0] }) => (
     <TouchableOpacity
       style={styles.mainCard}
       activeOpacity={0.7}
       onPress={() => {
-        const firstSub = categories.find(c => item.sub.some(s => c.name.toLowerCase().includes(s.toLowerCase())));
-        if (firstSub) {
-          router.push({ pathname: '/(client)/category-results', params: { id: firstSub.id, name: item.label, type: mode } } as any);
-        }
+        router.push({
+          pathname: '/(client)/subcategories',
+          params: { categoryKey: item.key, type: mode },
+        } as any);
       }}
     >
       <View style={styles.mainCardHeader}>
