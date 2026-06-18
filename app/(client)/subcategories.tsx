@@ -77,21 +77,21 @@ const CATEGORY_LABELS: Record<string, string> = {
 const getSubIcon = (name: string) => {
   const n = name.toLowerCase();
   if (n.includes('барбер')) return 'scissors';
-  if (n.includes('салон')) return 'smile';
+  if (n.includes('салон')) return 'heart';
   if (n.includes('массаж')) return 'heart';
   if (n.includes('маникюр')) return 'edit-3';
-  if (n.includes('макияж')) return 'feather';
+  if (n.includes('макияж')) return 'edit-3';
   if (n.includes('детейлинг')) return 'droplet';
   if (n.includes('сто') || n.includes('ремонт')) return 'tool';
-  if (n.includes('аренда авто')) return 'car';
+  if (n.includes('аренда авто')) return 'navigation';
   if (n.includes('трансфер')) return 'navigation';
-  if (n.includes('ведущ')) return 'mic';
+  if (n.includes('ведущ')) return 'music';
   if (n.includes('фотограф')) return 'camera';
   if (n.includes('музык')) return 'music';
   if (n.includes('тамада')) return 'users';
   if (n.includes('ресторан')) return 'coffee';
-  if (n.includes('зона') || n.includes('отдых')) return 'umbrella';
-  if (n.includes('глэмпинг')) return 'tent';
+  if (n.includes('зона') || n.includes('отдых')) return 'home';
+  if (n.includes('глэмпинг')) return 'home';
   if (n.includes('отел')) return 'home';
   if (n.includes('коттедж')) return 'home';
   if (n.includes('smm')) return 'share-2';
@@ -99,7 +99,7 @@ const getSubIcon = (name: string) => {
   if (n.includes('маркетолог')) return 'trending-up';
   if (n.includes('консалтинг')) return 'briefcase';
   if (n.includes('юрист') || n.includes('адвокат')) return 'shield';
-  if (n.includes('бухгалтер')) return 'calculator';
+  if (n.includes('бухгалтер')) return 'briefcase';
   if (n.includes('репетитор') || n.includes('курс') || n.includes('язык')) return 'book-open';
   if (n.includes('клининг')) return 'home';
   if (n.includes('дизайн')) return 'pen-tool';
@@ -107,14 +107,14 @@ const getSubIcon = (name: string) => {
   if (n.includes('фотостуди')) return 'camera';
   if (n.includes('пансионат')) return 'home';
   if (n.includes('гостев')) return 'home';
-  if (n.includes('бар') && !n.includes('барбер')) return 'wine';
-  if (n.includes('паб')) return 'beer';
-  if (n.includes('пиццер')) return 'circle';
+  if (n.includes('бар') && !n.includes('барбер')) return 'star';
+  if (n.includes('паб')) return 'star';
+  if (n.includes('пиццер')) return 'coffee';
   if (n.includes('кальян')) return 'cloud';
-  if (n.includes('компьютер')) return 'monitor';
-  if (n.includes('караоке')) return 'mic';
-  if (n.includes('ночн')) return 'moon';
-  return 'chevron-right';
+  if (n.includes('компьютер')) return 'zap';
+  if (n.includes('караоке')) return 'music';
+  if (n.includes('ночн')) return 'zap';
+  return 'map-pin';
 };
 
 export default function SubcategoryScreen() {
@@ -122,8 +122,6 @@ export default function SubcategoryScreen() {
   const insets = useSafeAreaInsets();
   const { categoryKey, type } = useLocalSearchParams<{ categoryKey: string; type: string }>();
   const [categories, setCategories] = useState<any[]>([]);
-
-  const isVenue = type === 'venue';
 
   const data = SUBCATEGORY_DATA[categoryKey || ''] || { icon: 'grid', subs: [] };
   const label = CATEGORY_LABELS[categoryKey || ''] || categoryKey;
@@ -137,16 +135,7 @@ export default function SubcategoryScreen() {
     fetchCategories();
   }, [fetchCategories]);
 
-  const venueCategories = isVenue ? categories : [];
-
-  const handleSubPress = (subName: string, catId?: number) => {
-    if (isVenue && catId) {
-      router.push({
-        pathname: '/(client)/category-results',
-        params: { id: catId, name: subName, type: 'venue' },
-      } as any);
-      return;
-    }
+  const handleSubPress = (subName: string) => {
     const matched = categories.find(
       (c) => c.name.toLowerCase().includes(subName.toLowerCase()) || subName.toLowerCase().includes(c.name.toLowerCase())
     );
@@ -158,10 +147,6 @@ export default function SubcategoryScreen() {
     }
   };
 
-  const items = isVenue
-    ? venueCategories.map((c: any) => ({ name: c.name, id: c.id }))
-    : data.subs.map((s: string) => ({ name: s }));
-
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle="light-content" />
@@ -170,28 +155,28 @@ export default function SubcategoryScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Icon name="arrow-left" type="feather" color="#FAFAFA" size={22} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{isVenue ? 'Заведения' : label}</Text>
+        <Text style={styles.headerTitle}>{label}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <FlatList
-        data={items}
-        keyExtractor={(item) => item.name}
+        data={data.subs}
+        keyExtractor={(item) => item}
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={{ padding: PADDING, paddingBottom: 100 }}
         renderItem={({ item }) => {
-          const iconName = isVenue ? 'map-pin' : getSubIcon(item.name);
+          const iconName = getSubIcon(item);
           return (
             <TouchableOpacity
               style={styles.card}
               activeOpacity={0.7}
-              onPress={() => handleSubPress(item.name, item.id)}
+              onPress={() => handleSubPress(item)}
             >
               <View style={styles.cardIconBox}>
                 <Icon name={iconName} type="feather" size={24} color="#F0B90B" />
               </View>
-              <Text style={styles.cardTitle}>{item.name}</Text>
+              <Text style={styles.cardTitle}>{item}</Text>
             </TouchableOpacity>
           );
         }}
