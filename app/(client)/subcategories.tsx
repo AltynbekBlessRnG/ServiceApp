@@ -83,6 +83,10 @@ const getSubIcon = (name: string) => {
   if (n.includes('репетитор') || n.includes('курс') || n.includes('язык')) return 'book-open';
   if (n.includes('клининг')) return 'home';
   if (n.includes('дизайн')) return 'pen-tool';
+  if (n.includes('кофейн')) return 'coffee';
+  if (n.includes('фотостуди')) return 'camera';
+  if (n.includes('пансионат')) return 'home';
+  if (n.includes('гостев')) return 'home';
   return 'chevron-right';
 };
 
@@ -91,6 +95,8 @@ export default function SubcategoryScreen() {
   const insets = useSafeAreaInsets();
   const { categoryKey, type } = useLocalSearchParams<{ categoryKey: string; type: string }>();
   const [categories, setCategories] = useState<any[]>([]);
+
+  const isVenue = type === 'venue';
 
   const data = SUBCATEGORY_DATA[categoryKey || ''] || { icon: 'grid', subs: [] };
   const label = CATEGORY_LABELS[categoryKey || ''] || categoryKey;
@@ -104,7 +110,16 @@ export default function SubcategoryScreen() {
     fetchCategories();
   }, [fetchCategories]);
 
-  const handleSubPress = (subName: string) => {
+  const venueCategories = isVenue ? categories : [];
+
+  const handleSubPress = (subName: string, catId?: number) => {
+    if (isVenue && catId) {
+      router.push({
+        pathname: '/(client)/category-results',
+        params: { id: catId, name: subName, type: 'venue' },
+      } as any);
+      return;
+    }
     const matched = categories.find(
       (c) => c.name.toLowerCase().includes(subName.toLowerCase()) || subName.toLowerCase().includes(c.name.toLowerCase())
     );
@@ -116,6 +131,10 @@ export default function SubcategoryScreen() {
     }
   };
 
+  const items = isVenue
+    ? venueCategories.map((c: any) => ({ name: c.name, id: c.id }))
+    : data.subs.map((s: string) => ({ name: s }));
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle="light-content" />
@@ -124,28 +143,28 @@ export default function SubcategoryScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Icon name="arrow-left" type="feather" color="#FAFAFA" size={22} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{label}</Text>
+        <Text style={styles.headerTitle}>{isVenue ? 'Заведения' : label}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <FlatList
-        data={data.subs}
-        keyExtractor={(item) => item}
+        data={items}
+        keyExtractor={(item) => item.name}
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={{ padding: PADDING, paddingBottom: 100 }}
         renderItem={({ item }) => {
-          const iconName = getSubIcon(item);
+          const iconName = isVenue ? 'map-pin' : getSubIcon(item.name);
           return (
             <TouchableOpacity
               style={styles.card}
               activeOpacity={0.7}
-              onPress={() => handleSubPress(item)}
+              onPress={() => handleSubPress(item.name, item.id)}
             >
               <View style={styles.cardIconBox}>
                 <Icon name={iconName} type="feather" size={24} color="#F0B90B" />
               </View>
-              <Text style={styles.cardTitle}>{item}</Text>
+              <Text style={styles.cardTitle}>{item.name}</Text>
             </TouchableOpacity>
           );
         }}

@@ -21,6 +21,11 @@ const MAIN_CATEGORIES = [
   { key: 'home', label: 'Дом и ремонт', icon: 'home', sub: ['Клининг', 'Ремонт', 'Дизайн интерьера'] },
 ];
 
+const VENUE_CATEGORIES = [
+  { key: 'venues_all', label: 'Все заведения', icon: 'map-pin', sub: ['Барбершопы', 'Кофейни', 'Фотостудии', 'Салоны красоты'] },
+  { key: 'venues_stay', label: 'Жилье', icon: 'home', sub: ['Зоны отдыха', 'Пансионаты', 'Гостевые дома', 'Коттеджи'] },
+];
+
 export default function ClientHome() {
   const { theme } = useTheme();
   const { user } = useAuth();
@@ -112,11 +117,13 @@ export default function ClientHome() {
     </View>
   );
 
+  const categories = mode === 'venue' ? VENUE_CATEGORIES : MAIN_CATEGORIES;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle="light-content" />
       <FlatList
-        data={MAIN_CATEGORIES}
+        data={categories}
         keyExtractor={(item) => item.key}
         numColumns={2}
         ListHeaderComponent={ListHeader}
