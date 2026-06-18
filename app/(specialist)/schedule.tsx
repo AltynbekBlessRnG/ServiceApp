@@ -71,7 +71,7 @@ export default function SpecialistScheduleScreen() {
         setManualBlocks(busyData?.map(b => b.time) || []);
 
     } catch (e) {
-        console.log(e);
+        // ignore
     } finally {
         setLoading(false);
     }

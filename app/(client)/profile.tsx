@@ -32,7 +32,7 @@ export default function ClientProfile() {
             setProfileData(data);
           }
         } catch (e) {
-          console.log('Ошибка загрузки профиля', e);
+          // ignore
         } finally {
           if (isActive) setLoading(false);
         }

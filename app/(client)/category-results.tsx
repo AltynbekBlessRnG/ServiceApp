@@ -160,7 +160,7 @@ export default function CategoryResultsScreen() {
             setItems(formatted);
         }
     } catch (e) {
-        console.log("Error:", e);
+        // fetch error
     } finally {
         setLoading(false);
     }

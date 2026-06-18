@@ -26,7 +26,6 @@ export default function GlobalSearchScreen() {
     try {
       // 1. Используем ИИ для понимания намерения
       const intent: SearchIntent = await analyzeSearchIntent(query);
-      console.log('AI Intent:', intent);
 
       setAiStatus(`Ищу: ${intent.category || 'все'} в г. ${intent.city || 'любом'}...`);
 

@@ -72,7 +72,7 @@ export default function EditVenueProfile() {
       const { data: mainProfile } = await supabase.from('profiles').select('avatar_url').eq('id', user.id).single();
       if (mainProfile) setAvatarUrl(mainProfile.avatar_url);
     } catch (e) {
-      console.log(e);
+      // ignore
     } finally {
       setFetching(false);
     }

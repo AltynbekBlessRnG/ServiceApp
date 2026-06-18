@@ -180,7 +180,7 @@ export default function VenueDetailScreen() {
         message: `Посмотрите объект на Алаколе: ${venue.profiles?.full_name || 'Зона отдыха'}\n${venue.address || 'Адрес уточняется'}\nTaptym`,
       });
     } catch (error) {
-      console.log(error);
+      // share failed
     }
   }
 
@@ -501,9 +501,9 @@ const styles = StyleSheet.create({
   statsPanel: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A1324',
+    backgroundColor: '#1E2329',
     borderWidth: 1,
-    borderColor: '#2D2638',
+    borderColor: '#2B3139',
     borderRadius: 24,
     paddingVertical: 22,
     marginBottom: 18,
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   statValue: { color: '#FFFFFF', fontSize: 18, fontWeight: '900' },
   statLabel: { color: '#A8A0B5', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   metaRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
-  metaCard: { flex: 1, backgroundColor: '#17111F', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#2D2638' },
+  metaCard: { flex: 1, backgroundColor: '#1E2329', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#2B3139' },
   metaTitle: { color: '#A8A0B5', fontSize: 13, fontWeight: '800', marginBottom: 8 },
   metaValue: { color: '#FFFFFF', fontSize: 20, fontWeight: '900' },
   section: { marginTop: 4, marginBottom: 20 },
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
   },
   seasonText: { color: '#7CF7E5', fontSize: 14, fontWeight: '800', flex: 1 },
   galleryRow: { gap: 12, paddingRight: 24 },
-  galleryImg: { width: 176, height: 220, borderRadius: 20, backgroundColor: '#1A1324' },
+  galleryImg: { width: 176, height: 220, borderRadius: 20, backgroundColor: '#1E2329' },
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -551,16 +551,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: '#2D2638',
+    borderTopColor: '#2B3139',
     gap: 14,
-    backgroundColor: '#0D0814',
+    backgroundColor: '#0B0E11',
   },
   chatBtn: {
     width: 64,
     height: 58,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#2D2638',
+    borderColor: '#2B3139',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -570,17 +570,17 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#9B2CFF',
+    backgroundColor: '#F0B90B',
   },
   bookBtnText: { color: '#FFFFFF', fontWeight: '900', fontSize: 17 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: '92%', padding: 20, borderRadius: 28, maxHeight: '92%', backgroundColor: '#17111F', borderWidth: 1, borderColor: '#2D2638' },
+  modalContent: { width: '92%', padding: 20, borderRadius: 28, maxHeight: '92%', backgroundColor: '#1E2329', borderWidth: 1, borderColor: '#2B3139' },
   modalTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900', textAlign: 'center', marginBottom: 14 },
   modalLabel: { color: '#A8A0B5', fontSize: 13, fontWeight: '800', marginBottom: 8 },
   input: {
     color: '#FFFFFF',
-    borderColor: '#2D2638',
-    backgroundColor: '#0D0814',
+    borderColor: '#2B3139',
+    backgroundColor: '#0B0E11',
     borderWidth: 1,
     borderRadius: 16,
     paddingHorizontal: 14,
@@ -589,5 +589,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   textArea: { minHeight: 90, textAlignVertical: 'top' },
-  modalSubmit: { backgroundColor: '#9B2CFF', borderRadius: 16, marginTop: 20, height: 55 },
+  modalSubmit: { backgroundColor: '#F0B90B', borderRadius: 16, marginTop: 20, height: 55 },
 });

@@ -128,8 +128,6 @@ export default function PersonalChatScreen() {
             
             <View style={{ marginLeft: 12 }}>
                 <Text style={[styles.headerName, { color: theme.colors.black }]}>{receiver?.full_name || 'Чат'}</Text>
-                {/* Заглушка статуса */}
-                <Text style={styles.headerStatus}>в сети</Text>
             </View>
         </View>
 

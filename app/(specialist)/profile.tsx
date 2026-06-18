@@ -33,7 +33,7 @@ export default function SpecialistProfileScreen() {
             setProfile(data);
           }
         } catch (e) {
-            console.log(e);
+            // ignore
         } finally {
             if (isActive) setLoading(false);
         }

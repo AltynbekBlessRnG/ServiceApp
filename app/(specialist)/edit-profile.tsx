@@ -66,7 +66,7 @@ export default function EditProfileScreen() {
         setAlakolZone(mainProfile.alakol_zone || null);
       }
     } catch (error) {
-      console.log('Error loading data:', error);
+      // load error
     } finally {
       setFetching(false);
     }
