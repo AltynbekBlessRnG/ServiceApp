@@ -19,6 +19,7 @@ import {
 import { Calendar } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showToast } from '../../components/AppToast';
+import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
 import { sendPushNotification } from '../../lib/push';
 import { useAuth } from '../../providers/AuthProvider';
@@ -75,6 +76,7 @@ export default function VenueDetailScreen() {
   const [venue, setVenue] = useState<VenueProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [checkInDate, setCheckInDate] = useState('');
   const [checkOutDate, setCheckOutDate] = useState('');
   const [guestCount, setGuestCount] = useState('2');
@@ -116,7 +118,7 @@ export default function VenueDetailScreen() {
 
       if (venueError) throw venueError;
 
-      const [profileResult, categoryResult, reviewsResult, portfolioResult] = await Promise.all([
+      const [profileResult, categoryResult, reviewsResult, portfolioResult, fullReviewsResult] = await Promise.all([
         supabase.from('profiles').select('full_name, city').eq('id', venueId).maybeSingle(),
         venueData?.category_id
           ? supabase.from('categories').select('name').eq('id', venueData.category_id).maybeSingle()
@@ -128,6 +130,7 @@ export default function VenueDetailScreen() {
           .eq('specialist_id', venueId)
           .order('is_pinned', { ascending: false })
           .order('created_at', { ascending: false }),
+        supabase.from('reviews').select('*, client:profiles!client_id(full_name, avatar_url)').eq('target_id', venueId).order('created_at', { ascending: false }).limit(5),
       ]);
 
       if (profileResult.error) throw profileResult.error;
@@ -146,8 +149,10 @@ export default function VenueDetailScreen() {
         profiles: profileResult.data,
         categories: categoryResult.data,
         avgRating,
+        reviewCount: ratings.length,
       });
       setPortfolio(portfolioResult.data || []);
+      setReviews(fullReviewsResult.data || []);
     } catch (error: any) {
       console.error(error.message);
       Alert.alert('Ошибка', error.message || 'Не удалось загрузить объект');
@@ -367,6 +372,32 @@ export default function VenueDetailScreen() {
               </ScrollView>
             </View>
           ) : null}
+
+          {/* ОТЗЫВЫ */}
+          <View style={styles.section}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={styles.sectionTitle}>Отзывы ({venue?.reviewCount || reviews.length})</Text>
+              <TouchableOpacity onPress={() => router.push({ pathname: '/(client)/add-review', params: { targetId: venueId, name: venue?.profiles?.full_name || 'Заведение', avatar: portfolio[0]?.file_url || coverFallback } })}>
+                <Text style={{ color: '#F0B90B', fontWeight: 'bold' }}>Написать</Text>
+              </TouchableOpacity>
+            </View>
+            {reviews.length > 0 ? reviews.map((r) => (
+              <View key={r.id} style={[styles.reviewCard, { backgroundColor: '#1E2329' }]}>
+                <UserAvatar avatarUrl={r.client?.avatar_url} size={40} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <Text style={{ fontWeight: 'bold', color: '#fff' }}>{r.client?.full_name}</Text>
+                    <View style={{ flexDirection: 'row' }}>
+                      {[1,2,3,4,5].map(s => <Icon key={s} name="star" type="font-awesome" size={12} color={s <= r.rating ? '#FFD700' : '#2B3139'} />)}
+                    </View>
+                  </View>
+                  <Text style={{ color: '#fff', opacity: 0.8, fontSize: 14 }}>{r.comment}</Text>
+                </View>
+              </View>
+            )) : (
+              <Text style={{ color: '#6B6675', textAlign: 'center', marginTop: 10 }}>Пока нет отзывов</Text>
+            )}
+          </View>
         </View>
       </ScrollView>
 
@@ -590,4 +621,5 @@ const styles = StyleSheet.create({
   },
   textArea: { minHeight: 90, textAlignVertical: 'top' },
   modalSubmit: { backgroundColor: '#F0B90B', borderRadius: 16, marginTop: 20, height: 55 },
+  reviewCard: { flexDirection: 'row', padding: 16, borderRadius: 16, marginBottom: 12 },
 });

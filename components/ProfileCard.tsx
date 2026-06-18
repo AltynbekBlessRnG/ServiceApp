@@ -40,6 +40,10 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ item, type = 'speciali
       ? `${item.distance_to_beach_m} м до моря`
       : `до ${item.capacity || 0} чел.`;
 
+  const distanceLabel = item.distance_km != null
+    ? item.distance_km < 1 ? `${Math.round(item.distance_km * 1000)} м` : `${item.distance_km.toFixed(1)} км`
+    : null;
+
   return (
     <TouchableOpacity activeOpacity={0.7} onPress={handlePress} style={styles.container}>
       <View style={styles.topRow}>
@@ -61,6 +65,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ item, type = 'speciali
       <View style={styles.bottomRow}>
         <View style={styles.metaRow}>
           <Text style={styles.metaText}>{metaLabel}</Text>
+          {distanceLabel && <Text style={[styles.metaText, { color: '#F0B90B' }]}>📍 {distanceLabel}</Text>}
           {price && <Text style={styles.priceText}>{price}</Text>}
         </View>
 

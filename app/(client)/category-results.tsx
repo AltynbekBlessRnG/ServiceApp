@@ -1,4 +1,5 @@
 import { Icon, Text, useTheme } from '@rneui/themed';
+import * as Location from 'expo-location';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -22,12 +23,14 @@ export default function CategoryResultsScreen() {
   const [subcategories, setSubcategories] = useState<any[]>([]);
   const [selectedTags, setSelectedTags] = useState<number[]>([]); 
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc'>('default');
+  const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'distance'>('default');
   const [sortModalVisible, setSortModalVisible] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
       if (isNaN(categoryId)) return;
       fetchTags();
+      requestLocation();
   }, [categoryId]);
 
   useEffect(() => { 
@@ -38,6 +41,23 @@ export default function CategoryResultsScreen() {
       if (type !== 'specialist') return;
       const { data } = await supabase.from('subcategories').select('*').eq('category_id', categoryId);
       if (data) setSubcategories(data);
+  }
+
+  async function requestLocation() {
+      try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status !== 'granted') return;
+          const loc = await Location.getCurrentPositionAsync({});
+          setUserLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      } catch {}
+  }
+
+  function getDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2) * Math.sin(dLng/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   }
 
   async function fetchItems() {
@@ -156,7 +176,16 @@ export default function CategoryResultsScreen() {
                 location_zone: item.location_zone,
                 category_name: item.categories?.name,
                 avg_rating: ratingMap[item.id] || 0,
+                distance_km: item.latitude && item.longitude && userLocation
+                    ? getDistance(userLocation.lat, userLocation.lng, item.latitude, item.longitude)
+                    : null,
             })) || [];
+
+            // Сортировка по расстоянию
+            if (sortBy === 'distance' && userLocation) {
+                formatted.sort((a: any, b: any) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity));
+            }
+
             setItems(formatted);
         }
     } catch (e) {
@@ -249,11 +278,12 @@ export default function CategoryResultsScreen() {
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSortModalVisible(false)}>
               <View style={[styles.modalContent, { backgroundColor: '#1E2329', paddingBottom: insets.bottom + 20 }]}>
                   <Text style={styles.modalTitle}>Сортировка</Text>
-                  {[
-                      { label: 'По умолчанию', value: 'default' },
-                      { label: 'Сначала дешевые', value: 'price_asc' },
-                      { label: 'Сначала дорогие', value: 'price_desc' },
-                  ].map((opt) => (
+                   {[
+                       { label: 'По умолчанию', value: 'default' },
+                       { label: 'Сначала дешевые', value: 'price_asc' },
+                       { label: 'Сначала дорогие', value: 'price_desc' },
+                       ...(userLocation && type === 'venue' ? [{ label: 'По расстоянию', value: 'distance' }] : []),
+                   ].map((opt) => (
                       <TouchableOpacity key={opt.value} style={styles.sortItem} onPress={() => { setSortBy(opt.value as any); setSortModalVisible(false); }}>
                           <Text style={{ fontSize: 16, color: sortBy === opt.value ? '#F0B90B' : '#fff' }}>{opt.label}</Text>
                           {sortBy === opt.value && <Icon name="check" type="feather" color="#F0B90B" />}
