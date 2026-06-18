@@ -1,8 +1,9 @@
 import { Icon, Text, useTheme } from '@rneui/themed';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dimensions, FlatList, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -22,8 +23,22 @@ const MAIN_CATEGORIES = [
 ];
 
 const VENUE_CATEGORIES = [
-  { key: 'venues_all', label: 'Все заведения', icon: 'map-pin', sub: ['Барбершопы', 'Кофейни', 'Фотостудии', 'Салоны красоты'] },
-  { key: 'venues_stay', label: 'Жилье', icon: 'home', sub: ['Зоны отдыха', 'Пансионаты', 'Гостевые дома', 'Коттеджи'] },
+  { key: 'v_restaurants', label: 'Рестораны', icon: 'utensils' },
+  { key: 'v_bars', label: 'Бары', icon: 'wine' },
+  { key: 'v_pubs', label: 'Пабы', icon: 'beer' },
+  { key: 'v_cafe', label: 'Кофейни', icon: 'coffee' },
+  { key: 'v_clubs', label: 'Комп. клубы', icon: 'monitor' },
+  { key: 'v_hookah', label: 'Кальянные', icon: 'cloud' },
+  { key: 'v_pizza', label: 'Пиццерии', icon: 'slash' },
+  { key: 'v_karaoke', label: 'Караоке', icon: 'mic' },
+  { key: 'v_nightclubs', label: 'Ночные клубы', icon: 'moon' },
+  { key: 'v_photo', label: 'Фотостудии', icon: 'camera' },
+  { key: 'v_beauty', label: 'Салоны красоты', icon: 'scissors' },
+  { key: 'v_barbers', label: 'Барбершопы', icon: 'user' },
+  { key: 'v_rest', label: 'Зоны отдыха', icon: 'umbrella' },
+  { key: 'v_guesthouses', label: 'Гостевые дома', icon: 'home' },
+  { key: 'v_cottages', label: 'Коттеджи', icon: 'home' },
+  { key: 'v_hostels', label: 'Пансионаты', icon: 'home' },
 ];
 
 export default function ClientHome() {
@@ -31,28 +46,44 @@ export default function ClientHome() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<'specialist' | 'venue'>('specialist');
+  const [dbVenueCategories, setDbVenueCategories] = useState<any[]>([]);
 
-  const renderMainCategory = ({ item }: { item: typeof MAIN_CATEGORIES[0] }) => (
+  useEffect(() => {
+    supabase.from('categories').select('id, name').eq('type', 'venue').then(({ data }) => {
+      if (data) setDbVenueCategories(data);
+    });
+  }, []);
+
+  const renderMainCategory = ({ item }: { item: typeof MAIN_CATEGORIES[0] & { id?: number } }) => (
     <TouchableOpacity
       style={styles.mainCard}
       activeOpacity={0.7}
       onPress={() => {
-        router.push({
-          pathname: '/(client)/subcategories',
-          params: { categoryKey: item.key, type: mode },
-        } as any);
+        if (mode === 'venue' && item.id) {
+          router.push({
+            pathname: '/(client)/category-results',
+            params: { id: item.id, name: item.label, type: 'venue' },
+          } as any);
+        } else {
+          router.push({
+            pathname: '/(client)/subcategories',
+            params: { categoryKey: item.key, type: mode },
+          } as any);
+        }
       }}
     >
       <View style={styles.mainCardHeader}>
         <View style={styles.mainCardIconBox}>
           <Icon name={item.icon} type="feather" size={26} color="#F0B90B" />
         </View>
-        <Icon name="chevron-right" type="feather" size={16} color="#848E9C" />
+        {mode === 'specialist' && <Icon name="chevron-right" type="feather" size={16} color="#848E9C" />}
       </View>
       <Text style={styles.mainCardTitle}>{item.label}</Text>
-      <Text style={styles.mainCardSub} numberOfLines={2}>
-        {item.sub.join(' · ')}
-      </Text>
+      {mode === 'specialist' && (
+        <Text style={styles.mainCardSub} numberOfLines={2}>
+          {item.sub?.join(' · ')}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 
@@ -112,12 +143,17 @@ export default function ClientHome() {
       </View>
 
       <View style={styles.sectionRow}>
-        <Text style={styles.sectionTitle}>Категории</Text>
+        <Text style={styles.sectionTitle}>{mode === 'venue' ? 'Заведения' : 'Категории'}</Text>
       </View>
     </View>
   );
 
-  const categories = mode === 'venue' ? VENUE_CATEGORIES : MAIN_CATEGORIES;
+  const venueItems = VENUE_CATEGORIES.map(vc => {
+    const dbMatch = dbVenueCategories.find(db => db.name === vc.label);
+    return { ...vc, id: dbMatch?.id };
+  }).filter(v => v.id);
+
+  const categories = mode === 'venue' ? venueItems : MAIN_CATEGORIES;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
