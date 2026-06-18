@@ -41,6 +41,22 @@ const SUBCATEGORY_DATA: Record<string, { icon: string; subs: string[] }> = {
     icon: 'home',
     subs: ['Клининг', 'Ремонт', 'Дизайн интерьера'],
   },
+  v_food: {
+    icon: 'coffee',
+    subs: ['Рестораны', 'Пабы', 'Кофейни', 'Пиццерии', 'Кальянные'],
+  },
+  v_fun: {
+    icon: 'music',
+    subs: ['Бары', 'Компьютерные клубы', 'Караоке', 'Ночные клубы'],
+  },
+  v_beauty: {
+    icon: 'heart',
+    subs: ['Салоны красоты', 'Барбершопы', 'Фотостудии'],
+  },
+  v_stay: {
+    icon: 'home',
+    subs: ['Зоны отдыха', 'Пансионаты', 'Гостевые дома', 'Коттеджи'],
+  },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -52,6 +68,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   legal: 'Юристы',
   education: 'Образование',
   home: 'Дом и ремонт',
+  v_food: 'Питание',
+  v_fun: 'Развлечения',
+  v_beauty: 'Красота',
+  v_stay: 'Жилье',
 };
 
 const getSubIcon = (name: string) => {
@@ -87,6 +107,13 @@ const getSubIcon = (name: string) => {
   if (n.includes('фотостуди')) return 'camera';
   if (n.includes('пансионат')) return 'home';
   if (n.includes('гостев')) return 'home';
+  if (n.includes('бар') && !n.includes('барбер')) return 'wine';
+  if (n.includes('паб')) return 'beer';
+  if (n.includes('пиццер')) return 'circle';
+  if (n.includes('кальян')) return 'cloud';
+  if (n.includes('компьютер')) return 'monitor';
+  if (n.includes('караоке')) return 'mic';
+  if (n.includes('ночн')) return 'moon';
   return 'chevron-right';
 };
 
