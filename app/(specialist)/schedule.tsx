@@ -25,6 +25,19 @@ const WORK_HOURS = [
     '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
 ];
 
+function slotInterval(date: string, time: string) {
+  const startsAt = new Date(`${date}T${time}:00`);
+  const endsAt = new Date(startsAt.getTime() + 60 * 60 * 1000);
+  return { startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() };
+}
+
+function dayInterval(date: string) {
+  const startsAt = new Date(`${date}T00:00:00`);
+  const endsAt = new Date(startsAt);
+  endsAt.setDate(endsAt.getDate() + 1);
+  return { startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() };
+}
+
 export default function SpecialistScheduleScreen() {
   const { theme } = useTheme();
   const { user } = useAuth();
@@ -39,50 +52,55 @@ export default function SpecialistScheduleScreen() {
   const [loading, setLoading] = useState(false);
 
   // Обновляем данные при смене даты или фокусе
-  useFocusEffect(
-    useCallback(() => {
-        fetchSchedule(selectedDate);
-    }, [selectedDate])
-  );
-
-  async function fetchSchedule(date: string) {
+  const fetchSchedule = useCallback(async (date: string) => {
     if (!user) return;
     setLoading(true);
+    const bounds = dayInterval(date);
     
     try {
         // 1. Грузим ЗАКАЗЫ (Bookings) на этот день
         // Берем и confirmed, и pending (pending тоже занимает место пока не отклонен)
         const { data: bookingData } = await supabase
             .from('bookings')
-            .select('date_time, status, client:profiles!client_id(full_name)')
-            .eq('specialist_id', user.id)
-            .ilike('date_time', `${date}%`) // Фильтр по дате "YYYY-MM-DD%"
-            .neq('status', 'rejected'); // Отклоненные не считаем занятыми
+            .select('starts_at, status, client:profiles!client_id(full_name)')
+            .eq('provider_id', user.id)
+            .gte('starts_at', bounds.startsAt)
+            .lt('starts_at', bounds.endsAt)
+            .in('status', ['pending', 'confirmed']);
 
         setBookings(bookingData || []);
 
         // 2. Грузим РУЧНЫЕ БЛОКИРОВКИ (Busy Times)
         const { data: busyData } = await supabase
-            .from('busy_times')
-            .select('time')
-            .eq('specialist_id', user.id)
-            .eq('date', date);
+            .from('provider_blocks')
+            .select('starts_at')
+            .eq('provider_id', user.id)
+            .lt('starts_at', bounds.endsAt)
+            .gt('ends_at', bounds.startsAt);
             
-        setManualBlocks(busyData?.map(b => b.time) || []);
+        setManualBlocks(busyData?.map(block => (
+          `${String(new Date(block.starts_at).getHours()).padStart(2, '0')}:00`
+        )) || []);
 
-    } catch (e) {
+    } catch {
         // ignore
     } finally {
         setLoading(false);
     }
-  }
+  }, [user]);
+
+  useFocusEffect(
+    useCallback(() => {
+        void fetchSchedule(selectedDate);
+    }, [fetchSchedule, selectedDate])
+  );
 
   // ОБРАБОТКА НАЖАТИЯ НА СЛОТ
   async function handleSlotPress(time: string) {
       haptics.light();
 
       // 1. Проверяем, есть ли там ЗАКАЗ
-      const booking = bookings.find(b => b.date_time.includes(time));
+      const booking = bookings.find(b => new Date(b.starts_at).getHours() === Number(time.slice(0, 2)));
       if (booking) {
           Alert.alert(
               "Занято клиентом", 
@@ -97,11 +115,10 @@ export default function SpecialistScheduleScreen() {
       if (isBlocked) {
           // РАЗБЛОКИРОВАТЬ
           const { error } = await supabase
-            .from('busy_times')
+            .from('provider_blocks')
             .delete()
-            .eq('specialist_id', user?.id)
-            .eq('date', selectedDate)
-            .eq('time', time);
+            .eq('provider_id', user?.id)
+            .eq('starts_at', slotInterval(selectedDate, time).startsAt);
             
           if (!error) {
               setManualBlocks(prev => prev.filter(t => t !== time));
@@ -109,8 +126,12 @@ export default function SpecialistScheduleScreen() {
       } else {
           // ЗАБЛОКИРОВАТЬ
           const { error } = await supabase
-            .from('busy_times')
-            .insert({ specialist_id: user?.id, date: selectedDate, time: time });
+            .from('provider_blocks')
+            .insert({
+              provider_id: user?.id,
+              starts_at: slotInterval(selectedDate, time).startsAt,
+              ends_at: slotInterval(selectedDate, time).endsAt,
+            });
             
           if (!error) {
               setManualBlocks(prev => [...prev, time]);
@@ -121,7 +142,7 @@ export default function SpecialistScheduleScreen() {
   // Рендер одного слота времени
   const renderTimeSlot = (time: string) => {
       // Ищем заказ на это время
-      const booking = bookings.find(b => b.date_time.includes(time));
+      const booking = bookings.find(b => new Date(b.starts_at).getHours() === Number(time.slice(0, 2)));
       // Ищем ручную блокировку
       const isManualBusy = manualBlocks.includes(time);
 

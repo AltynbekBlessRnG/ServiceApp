@@ -1,5 +1,5 @@
 import { useIsFocused } from '@react-navigation/native';
-import { Icon, Text, useTheme } from '@rneui/themed';
+import { Icon, Text } from '@rneui/themed';
 import { ResizeMode, Video } from 'expo-av';
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient'; // <--- НУЖЕН ЭТОТ ИМПОРТ
@@ -21,7 +21,6 @@ import { supabase } from '../../lib/supabase';
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ReelsScreen() {
-  const { theme } = useTheme();
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   
@@ -33,26 +32,26 @@ export default function ReelsScreen() {
   const BOTTOM_TAB_HEIGHT = 60 + (Platform.OS === 'ios' ? insets.bottom : 0); // Чуть подправил для Android
   const ITEM_HEIGHT = SCREEN_HEIGHT - BOTTOM_TAB_HEIGHT;
 
-  useFocusEffect(useCallback(() => {
-      // Здесь должен быть твой RPC запрос или обычный select
-      // Пока сделаем select из portfolio, где in_feed = true
-      fetchReels();
-  }, []));
-
-  async function fetchReels() {
+  const fetchReels = useCallback(async () => {
       // Берем видео, у которых стоит галочка "В ленте"
       const { data } = await supabase
-        .from('portfolio')
-        .select('*, profiles(full_name, avatar_url)')
+        .from('portfolio_items')
+        .select('*, profiles!owner_id(full_name, avatar_url)')
         .eq('file_type', 'video')
         .eq('in_feed', true) 
         .order('created_at', { ascending: false });
         
       if (data && data.length > 0) {
           setVideos(data);
-          if (!currentId) setCurrentId(data[0].id);
+          setCurrentId((value: string | null) => value ?? data[0].id);
+      } else {
+          setVideos([]);
       }
-  }
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+      void fetchReels();
+  }, [fetchReels]));
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
@@ -105,7 +104,7 @@ export default function ReelsScreen() {
                 <View style={{ flex: 1, paddingRight: 20 }}>
                     <TouchableOpacity 
                         style={styles.userInfo}
-                        onPress={() => router.push(`/specialist-details/${item.specialist_id}`)}
+                        onPress={() => router.push(`/specialist-details/${item.owner_id}`)}
                     >
                         <UserAvatar avatarUrl={item.profiles?.avatar_url} size={45} />
                         <Text style={styles.userName}>@{item.profiles?.full_name}</Text>
@@ -126,7 +125,7 @@ export default function ReelsScreen() {
 
                     <TouchableOpacity 
                         style={styles.actionBtn}
-                        onPress={() => router.push(`/chat/${item.specialist_id}`)}
+                        onPress={() => router.push(`/chat/${item.owner_id}`)}
                     >
                         <Icon name="message-circle" type="feather" color="white" size={32} style={styles.shadow} />
                         <Text style={styles.actionText}>Чат</Text>

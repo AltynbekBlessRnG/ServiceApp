@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 
 import { resolveHomeRoute } from '../lib/auth-routing';
 import { getPublicAppConfig, getRequiredEnv } from '../lib/env';
+import { canTransitionBooking, deduplicateProviders, formatPrice } from '../lib/domain';
+import { getFallbackSearchIntent } from '../lib/search-intent';
 
 function run(name: string, fn: () => void) {
   try {
@@ -26,7 +28,6 @@ run('routes venue users to the venue home screen', () => {
 });
 
 run('falls back to role selection for unsupported roles', () => {
-  assert.equal(resolveHomeRoute('admin'), '/(auth)/role-select');
   assert.equal(resolveHomeRoute(null), '/(auth)/role-select');
 });
 
@@ -40,15 +41,10 @@ run('normalizes a rest endpoint into the project URL', () => {
   assert.equal(getRequiredEnv('EXPO_PUBLIC_SUPABASE_URL', env), 'https://example.supabase.co');
 });
 
-run('returns fallback when env is missing for known variables', () => {
-  const result = getRequiredEnv('EXPO_PUBLIC_SUPABASE_URL', {});
-  assert.ok(result.includes('supabase.co'), 'Should return fallback Supabase URL');
-});
-
-run('throws for unknown env variables with no fallback', () => {
+run('throws when a required environment variable is missing', () => {
   assert.throws(
-    () => getRequiredEnv('UNKNOWN_VARIABLE', {}),
-    /Missing required environment variable: UNKNOWN_VARIABLE/
+    () => getRequiredEnv('EXPO_PUBLIC_SUPABASE_URL', {}),
+    /Missing required environment variable: EXPO_PUBLIC_SUPABASE_URL/
   );
 });
 
@@ -56,12 +52,46 @@ run('collects the public runtime config shape', () => {
   const config = getPublicAppConfig({
     EXPO_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
     EXPO_PUBLIC_SUPABASE_ANON_KEY: 'anon-key',
-    EXPO_PUBLIC_API_KEY: 'gemini-key',
   });
 
   assert.deepEqual(config, {
     supabaseUrl: 'https://example.supabase.co',
     supabaseAnonKey: 'anon-key',
-    geminiApiKey: 'gemini-key',
+  });
+});
+
+run('allows only client cancellation from active booking states', () => {
+  const future = new Date(Date.now() + 60_000);
+  assert.equal(canTransitionBooking('client', 'pending', 'cancelled', future), true);
+  assert.equal(canTransitionBooking('client', 'completed', 'cancelled', future), false);
+});
+
+run('allows provider completion only after an appointment starts', () => {
+  const now = new Date('2026-07-30T12:00:00Z');
+  assert.equal(canTransitionBooking('provider', 'confirmed', 'completed', new Date('2026-07-30T11:00:00Z'), now), true);
+  assert.equal(canTransitionBooking('provider', 'confirmed', 'completed', new Date('2026-07-30T13:00:00Z'), now), false);
+});
+
+run('allows an audited admin override without no-op transitions', () => {
+  const future = new Date(Date.now() + 60_000);
+  assert.equal(canTransitionBooking('admin', 'pending', 'completed', future), true);
+  assert.equal(canTransitionBooking('admin', 'pending', 'pending', future), false);
+});
+
+run('deduplicates provider cards produced by multiple services', () => {
+  assert.deepEqual(deduplicateProviders([{ id: 'a', service: 'one' }, { id: 'a', service: 'two' }, { id: 'b', service: 'three' }]), [
+    { id: 'a', service: 'two' },
+    { id: 'b', service: 'three' },
+  ]);
+});
+
+run('formats Kazakhstan tenge prices', () => {
+  assert.match(formatPrice(12500), /12[^\d]?500 ₸/);
+});
+
+run('uses local search intent when AI is unavailable', () => {
+  assert.deepEqual(getFallbackSearchIntent('маникюр'), {
+    intent: 'general_question',
+    serviceSlugs: [],
   });
 });

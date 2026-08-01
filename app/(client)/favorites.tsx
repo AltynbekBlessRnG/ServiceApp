@@ -15,22 +15,22 @@ export default function FavoritesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useFocusEffect(useCallback(() => { fetchFavorites(); }, []));
-
-  async function fetchFavorites() {
+  const fetchFavorites = useCallback(async () => {
     if (!user) return;
     const { data: favData } = await supabase.from('favorites').select('target_id').eq('user_id', user.id);
     const favoriteIds = favData?.map(f => f.target_id) || [];
 
     if (favoriteIds.length > 0) {
-      const { data } = await supabase.from('global_search_view').select('*').in('id', favoriteIds);
+      const { data } = await supabase.from('provider_search_view').select('*').in('id', favoriteIds);
       if (data) setItems(data);
     } else {
       setItems([]);
     }
     setLoading(false);
     setRefreshing(false);
-  }
+  }, [user]);
+
+  useFocusEffect(useCallback(() => { void fetchFavorites(); }, [fetchFavorites]));
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -42,7 +42,7 @@ export default function FavoritesScreen() {
           <FlatList
               data={items}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <ProfileCard item={item} type={item.role || 'specialist'} />}
+              renderItem={({ item }) => <ProfileCard item={item} type={item.provider_type || 'specialist'} />}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => {setRefreshing(true); fetchFavorites();}} tintColor={theme.colors.primary} />}
               contentContainerStyle={{ padding: 20 }}
               ListEmptyComponent={

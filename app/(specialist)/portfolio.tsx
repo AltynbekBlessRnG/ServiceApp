@@ -2,7 +2,7 @@ import { Icon, Switch, Text, useTheme } from '@rneui/themed';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -34,21 +34,21 @@ export default function MyPortfolioScreen() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [filter, setFilter] = useState<'all' | 'feed'>('all');
 
-  useEffect(() => { fetchPortfolio(); }, []);
-
-  async function fetchPortfolio() {
+  const fetchPortfolio = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
-        .from('portfolio')
+        .from('portfolio_items')
         .select('*')
-        .eq('specialist_id', user.id)
+        .eq('owner_id', user.id)
         // СОРТИРОВКА: Сначала закрепленные, потом новые
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
     
     if (data) setItems(data);
     setLoading(false);
-  }
+  }, [user]);
+
+  useEffect(() => { void fetchPortfolio(); }, [fetchPortfolio]);
 
   async function pickMedia() {
     const result = await ImagePicker.launchImageLibraryAsync({ 
@@ -80,12 +80,12 @@ export default function MyPortfolioScreen() {
               const { uri } = await VideoThumbnails.getThumbnailAsync(asset.uri, { time: 1000 });
               const thumbName = `${user?.id}/${timestamp}_thumb.jpg`;
               thumbUrl = await uploadFileToSupabase('portfolio', uri, thumbName);
-          } catch (e) { /* thumbnail failed */ }
+          } catch { /* thumbnail failed */ }
       }
       
       // 3. Пишем в базу
-      const { error } = await supabase.from('portfolio').insert({ 
-          specialist_id: user?.id, 
+      const { error } = await supabase.from('portfolio_items').insert({
+          owner_id: user?.id,
           file_url: publicUrl, 
           thumbnail_url: thumbUrl,
           file_type: fileType,
@@ -112,9 +112,9 @@ export default function MyPortfolioScreen() {
       setSelectedItem({ ...item, is_hero: true });
 
       // В базе: сначала сбрасываем всем is_hero
-      await supabase.from('portfolio').update({ is_hero: false }).eq('specialist_id', user?.id);
+      await supabase.from('portfolio_items').update({ is_hero: false }).eq('owner_id', user?.id);
       // Ставим этому
-      await supabase.from('portfolio').update({ is_hero: true }).eq('id', item.id);
+      await supabase.from('portfolio_items').update({ is_hero: true }).eq('id', item.id);
       
       Alert.alert("Обложка обновлена", "Теперь клиенты увидят это фото в шапке профиля.");
   }
@@ -131,7 +131,7 @@ export default function MyPortfolioScreen() {
       tempItems.sort((a, b) => (Number(b.is_pinned) - Number(a.is_pinned)) || (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
       setItems(tempItems);
 
-      await supabase.from('portfolio').update({ is_pinned: newValue }).eq('id', item.id);
+      await supabase.from('portfolio_items').update({ is_pinned: newValue }).eq('id', item.id);
   }
 
   // 3. В ленту/Из ленты
@@ -140,14 +140,14 @@ export default function MyPortfolioScreen() {
       const updatedItem = { ...item, in_feed: newValue };
       setSelectedItem(updatedItem);
       setItems(prev => prev.map(i => i.id === item.id ? updatedItem : i));
-      await supabase.from('portfolio').update({ in_feed: newValue }).eq('id', item.id);
+      await supabase.from('portfolio_items').update({ in_feed: newValue }).eq('id', item.id);
   }
 
   async function deleteItem(id: string) {
     Alert.alert("Удалить?", "Файл исчезнет навсегда.", [
         { text: "Отмена", style: "cancel" },
         { text: "Удалить", style: "destructive", onPress: async () => {
-            await supabase.from('portfolio').delete().eq('id', id);
+            await supabase.from('portfolio_items').delete().eq('id', id);
             setItems(prev => prev.filter(item => item.id !== id));
             setSelectedItem(null);
         }}

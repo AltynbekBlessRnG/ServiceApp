@@ -10,7 +10,7 @@ import { useAuth } from '../../providers/AuthProvider';
 export default function AddReviewScreen() {
   const { theme } = useTheme();
   const haptics = useHaptics(); // <---
-  const { targetId, name, avatar } = useLocalSearchParams();
+  const { bookingId, targetId, name, avatar } = useLocalSearchParams();
   const { user } = useAuth();
   
   const [rating, setRating] = useState(5);
@@ -27,6 +27,7 @@ export default function AddReviewScreen() {
     setLoading(true);
     const { error } = await supabase.from('reviews').insert({ 
         client_id: user.id, 
+        booking_id: bookingId,
         target_id: targetId, 
         rating, 
         comment: comment.trim() 

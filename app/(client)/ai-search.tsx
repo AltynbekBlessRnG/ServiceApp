@@ -27,23 +27,25 @@ export default function GlobalSearchScreen() {
       // 1. Используем ИИ для понимания намерения
       const intent: SearchIntent = await analyzeSearchIntent(query);
 
-      setAiStatus(`Ищу: ${intent.category || 'все'} в г. ${intent.city || 'любом'}...`);
+      setAiStatus(`Ищу: ${intent.categorySlug || 'все'} в г. ${intent.city || 'любом'}...`);
 
       // 2. Строим запрос к Supabase на основе выводов ИИ
-      let dbQuery = supabase.from('global_search_view').select('*');
+      let dbQuery = supabase.from('provider_search_view').select('*');
 
-      if (intent.category) {
-        dbQuery = dbQuery.ilike('category_name', `%${intent.category}%`);
+      if (intent.categorySlug) {
+        dbQuery = dbQuery.eq('category_slug', intent.categorySlug);
+      }
+
+      if (intent.serviceSlugs?.[0]) {
+        dbQuery = dbQuery.eq('service_slug', intent.serviceSlugs[0]);
       }
       
       if (intent.city) {
         dbQuery = dbQuery.ilike('city', `%${intent.city}%`);
       }
 
-      if (intent.intent === 'search_specialist') {
-        dbQuery = dbQuery.eq('role', 'specialist');
-      } else if (intent.intent === 'search_venue') {
-        dbQuery = dbQuery.eq('role', 'venue');
+      if (intent.providerType) {
+        dbQuery = dbQuery.eq('provider_type', intent.providerType);
       }
 
       // Дополнительный поиск по тегам, если ничего не нашлось по жестким фильтрам
@@ -52,11 +54,16 @@ export default function GlobalSearchScreen() {
       if (data && data.length > 0) {
         setResults(data);
       } else {
+        const safeQuery = query.replace(/[^\p{L}\p{N}\s-]/gu, ' ').trim();
+        if (!safeQuery) {
+          setResults([]);
+          return;
+        }
         // Fallback: обычный текстовый поиск по описанию
         const { data: fallbackData } = await supabase
-          .from('global_search_view')
+          .from('provider_search_view')
           .select('*')
-          .or(`full_name.ilike.%${query}%,description.ilike.%${query}%`)
+          .or(`full_name.ilike.%${safeQuery}%,category_name.ilike.%${safeQuery}%,service_name.ilike.%${safeQuery}%`)
           .limit(20);
         setResults(fallbackData || []);
       }
@@ -105,7 +112,7 @@ export default function GlobalSearchScreen() {
             data={results}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-                <ProfileCard item={item} type={item.role === 'venue' ? 'venue' : 'specialist'} />
+                <ProfileCard item={item} type={item.provider_type === 'venue' ? 'venue' : 'specialist'} />
             )}
             contentContainerStyle={{ padding: 20 }}
             keyboardShouldPersistTaps="handled"
@@ -137,10 +144,10 @@ const styles = StyleSheet.create({
   input: { flex: 1, marginLeft: 10, fontSize: 16, height: '100%' },
   aiBadge: { 
     marginHorizontal: 20, padding: 8, 
-    backgroundColor: '#6366F115', borderRadius: 10,
-    alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#6366F1'
+    backgroundColor: 'rgba(240, 185, 11, 0.08)', borderRadius: 10,
+    alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#F0B90B'
   },
-  aiStatusText: { color: '#6366F1', fontSize: 12, fontWeight: '700' },
+  aiStatusText: { color: '#F0B90B', fontSize: 12, fontWeight: '700' },
   empty: { alignItems: 'center', marginTop: 100, paddingHorizontal: 40 },
   emptyText: { marginTop: 15, fontSize: 15, textAlign: 'center', lineHeight: 22 }
 });

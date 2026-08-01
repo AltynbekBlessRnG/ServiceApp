@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import { Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const SLIDES = [
   {

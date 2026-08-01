@@ -2,7 +2,7 @@ import { Button, CheckBox, Icon, Input, Text, useTheme } from '@rneui/themed';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
@@ -28,6 +28,7 @@ export default function EditVenueProfile() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [isLocationPublic, setIsLocationPublic] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
   const [locationZone, setLocationZone] = useState<'akshi' | 'koktuma' | 'usharal' | null>(null);
   const [priceFrom, setPriceFrom] = useState('');
@@ -40,13 +41,9 @@ export default function EditVenueProfile() {
   const [familyFriendly, setFamilyFriendly] = useState(false);
   const [petFriendly, setPetFriendly] = useState(false);
 
-  useEffect(() => {
-    if (!authLoading && user) loadData();
-  }, [authLoading, user]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
-      const { data: catData } = await supabase.from('categories').select('id, name').eq('type', 'venue').order('name');
+      const { data: catData } = await supabase.from('service_categories').select('id, name').eq('provider_type', 'venue').order('sort_order');
       if (catData) setCategories(catData);
 
       if (!user) return;
@@ -55,7 +52,6 @@ export default function EditVenueProfile() {
         setDescription(profile.description || '');
         setAddress(profile.address || '');
         setCapacity(profile.capacity ? String(profile.capacity) : '');
-        setSelectedCategory(profile.category_id);
         setLocationZone(profile.location_zone || null);
         setPriceFrom(profile.price_from ? String(profile.price_from) : '');
         setDistanceToBeach(profile.distance_to_beach_m ? String(profile.distance_to_beach_m) : '');
@@ -66,17 +62,35 @@ export default function EditVenueProfile() {
         setHasMeals(Boolean(profile.has_meals));
         setFamilyFriendly(Boolean(profile.family_friendly));
         setPetFriendly(Boolean(profile.pet_friendly));
-        if (profile.latitude && profile.longitude) setLocation({ lat: profile.latitude, lon: profile.longitude });
       }
+
+      const { data: locationRows } = await supabase.rpc('get_venue_location', { p_provider_id: user.id });
+      const savedLocation = locationRows?.[0];
+      if (savedLocation) {
+        setLocation({ lat: savedLocation.latitude, lon: savedLocation.longitude });
+        setIsLocationPublic(Boolean(savedLocation.is_public));
+      }
+
+      const { data: providerServices } = await supabase
+        .from('provider_services')
+        .select('services(category_id)')
+        .eq('provider_id', user.id)
+        .limit(1);
+      const linkedService = providerServices?.[0]?.services as { category_id?: number } | null | undefined;
+      setSelectedCategory(linkedService?.category_id ?? null);
 
       const { data: mainProfile } = await supabase.from('profiles').select('avatar_url').eq('id', user.id).single();
       if (mainProfile) setAvatarUrl(mainProfile.avatar_url);
-    } catch (e) {
+    } catch {
       // ignore
     } finally {
       setFetching(false);
     }
-  }
+  }, [user]);
+
+  useEffect(() => {
+    if (!authLoading && user) void loadData();
+  }, [authLoading, loadData, user]);
 
   async function getCurrentLocation() {
     setLocLoading(true);
@@ -123,9 +137,6 @@ export default function EditVenueProfile() {
         description,
         address,
         capacity: parseInt(capacity, 10) || 0,
-        category_id: selectedCategory,
-        latitude: location?.lat ?? null,
-        longitude: location?.lon ?? null,
         location_zone: locationZone,
         price_from: parseInt(priceFrom, 10) || 0,
         distance_to_beach_m: distanceToBeach ? parseInt(distanceToBeach, 10) : null,
@@ -140,6 +151,34 @@ export default function EditVenueProfile() {
 
       const { error } = await supabase.from('venue_profiles').upsert(updates as any);
       if (error) throw error;
+      if (location) {
+        const { error: locationError } = await supabase.rpc('update_my_venue_location', {
+          p_latitude: location.lat,
+          p_longitude: location.lon,
+          p_is_public: isLocationPublic,
+        });
+        if (locationError) throw locationError;
+      }
+
+      await supabase.from('provider_services').delete().eq('provider_id', user.id);
+      if (selectedCategory) {
+        const { data: services, error: servicesError } = await supabase
+          .from('services')
+          .select('id')
+          .eq('category_id', selectedCategory)
+          .eq('is_active', true);
+        if (servicesError) throw servicesError;
+        if (services?.length) {
+          const { error: linkError } = await supabase.from('provider_services').insert(
+            services.map((service) => ({
+              provider_id: user.id,
+              service_id: service.id,
+              price_from: parseInt(priceFrom, 10) || 0,
+            })),
+          );
+          if (linkError) throw linkError;
+        }
+      }
       Alert.alert('Успех', 'Профиль объекта обновлен');
       router.back();
     } catch (error: any) {
@@ -212,6 +251,15 @@ export default function EditVenueProfile() {
             {locLoading ? <ActivityIndicator color={theme.colors.primary} /> : <Icon name="crosshair" type="feather" color={theme.colors.primary} />}
           </TouchableOpacity>
         </View>
+        <CheckBox
+          title="Показывать точку заведения клиентам"
+          checked={isLocationPublic}
+          disabled={!location}
+          onPress={() => setIsLocationPublic((value) => !value)}
+          containerStyle={styles.checkItem}
+          textStyle={styles.checkText}
+          checkedColor={theme.colors.primary}
+        />
 
         <Input label="Описание" multiline numberOfLines={3} value={description} onChangeText={setDescription} placeholder="Семейная база отдыха, 2 минуты до берега..." />
         <Input label="Вместимость (чел.)" keyboardType="numeric" value={capacity} onChangeText={setCapacity} placeholder="50" />

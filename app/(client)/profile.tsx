@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, Vie
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
+import { signOutSecurely } from '../../lib/auth-actions';
 import { useAuth } from '../../providers/AuthProvider';
 
 export default function ClientProfile() {
@@ -31,7 +32,7 @@ export default function ClientProfile() {
           if (data && isActive) {
             setProfileData(data);
           }
-        } catch (e) {
+        } catch {
           // ignore
         } finally {
           if (isActive) setLoading(false);
@@ -50,7 +51,7 @@ export default function ClientProfile() {
     Alert.alert('Выход', 'Вы уверены, что хотите выйти из аккаунта?', [
       { text: 'Отмена', style: 'cancel' },
       { text: 'Выйти', style: 'destructive', onPress: async () => {
-          await supabase.auth.signOut();
+          await signOutSecurely();
           router.replace('/(auth)/login');
       }}
     ]);

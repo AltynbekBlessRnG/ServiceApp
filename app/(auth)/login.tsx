@@ -48,6 +48,8 @@ export default function LoginScreen() {
             Вход
           </Text>
           <Input
+            testID="email-input"
+            accessibilityLabel="Email"
             placeholder="email@address.com"
             label="Email"
             onChangeText={setEmail}
@@ -57,6 +59,8 @@ export default function LoginScreen() {
             inputStyle={{ color: theme.colors.black }}
           />
           <Input
+            testID="password-input"
+            accessibilityLabel="Пароль"
             placeholder="Пароль"
             label="Пароль"
             onChangeText={setPassword}
@@ -66,6 +70,9 @@ export default function LoginScreen() {
             inputStyle={{ color: theme.colors.black }}
           />
           <Button title="Войти" loading={loading} onPress={signInWithEmail} buttonStyle={styles.button} />
+          <TouchableOpacity onPress={() => router.push('/forgot-password')} style={styles.linkContainer}>
+            <Text style={styles.linkText}>Забыли пароль?</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(auth)/register')} style={styles.linkContainer}>
             <Text style={styles.linkText}>Нет аккаунта? Зарегистрироваться</Text>
           </TouchableOpacity>

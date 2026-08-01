@@ -1,7 +1,7 @@
 import { Avatar, ButtonGroup, Icon, ListItem, Text, useTheme } from '@rneui/themed';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { FlatList, Image, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 
@@ -17,27 +17,25 @@ export default function MessagesListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useFocusEffect(useCallback(() => { 
-      if(selectedIndex === 0) fetchChats();
-      else fetchCategories();
-  }, [selectedIndex]));
-
-  async function fetchChats() {
-    // Твоя существующая функция для личных чатов
+  const fetchChats = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase.rpc('get_my_chats');
     if (data) setChats(data);
     setLoading(false);
     setRefreshing(false);
-  }
+  }, [user]);
 
-  async function fetchCategories() {
-    // Грузим категории для общих чатов
-    const { data } = await supabase.from('categories').select('*').order('name');
+  const fetchCategories = useCallback(async () => {
+    const { data } = await supabase.from('service_categories').select('id, name, icon').eq('provider_type', 'venue').eq('is_active', true).order('sort_order');
     if (data) setCategories(data);
     setLoading(false);
     setRefreshing(false);
-  }
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+      if(selectedIndex === 0) void fetchChats();
+      else void fetchCategories();
+  }, [fetchCategories, fetchChats, selectedIndex]));
 
   const onRefresh = () => { 
       setRefreshing(true); 
@@ -59,7 +57,9 @@ export default function MessagesListScreen() {
         selectedButtonStyle={{backgroundColor: theme.colors.primary}}
       />
 
-      {selectedIndex === 0 ? (
+      {loading && !refreshing ? (
+        <ActivityIndicator color={theme.colors.primary} style={{ marginTop: 40 }} />
+      ) : selectedIndex === 0 ? (
           // --- ЛИЧНЫЕ ЧАТЫ ---
           <FlatList
               data={chats}
@@ -86,9 +86,11 @@ export default function MessagesListScreen() {
               keyExtractor={(item) => item.id.toString()}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
               renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => router.push({ pathname: `/chat/category/${item.id}`, params: { name: item.name } } as any)}>
+                <TouchableOpacity onPress={() => router.push({ pathname: '/chat/category/[id]', params: { id: item.id, name: item.name } })}>
                     <ListItem containerStyle={{backgroundColor: theme.colors.background}} bottomDivider>
-                         <Image source={{ uri: item.image_url || 'https://via.placeholder.com/30' }} style={{ width: 40, height: 40 }} resizeMode="contain" />
+                         <View style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+                           <Icon name={item.icon || 'hash'} type="feather" size={24} color={theme.colors.primary} />
+                         </View>
                         <ListItem.Content>
                             <ListItem.Title style={{fontWeight: 'bold', color: theme.colors.black}}>{item.name}</ListItem.Title>
                             <ListItem.Subtitle style={{color: 'gray'}}>Поиск и общение</ListItem.Subtitle>

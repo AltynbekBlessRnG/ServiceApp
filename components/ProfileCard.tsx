@@ -22,18 +22,21 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ item, type = 'speciali
   const handlePress = () => {
     haptics.light();
     const route = type === 'venue' ? `/venue-details/${item.id}` : `/specialist-details/${item.id}`;
-    router.push(route as any);
+    router.push({
+      pathname: route as '/specialist-details/[id]' | '/venue-details/[id]',
+      params: { id: item.id, serviceId: item.service_id ? String(item.service_id) : undefined },
+    });
   };
 
   const displayName = item.full_name || item.profiles?.full_name || 'Без имени';
   const displayCity = item.city || item.profiles?.city || 'Казахстан';
   const rating = item.avg_rating > 0 ? Number(item.avg_rating).toFixed(1) : 'NEW';
   const avatarUrl = item.avatar_url || item.profiles?.avatar_url;
-  const priceValue = type === 'venue' ? item.price_from || item.price_start : item.price_start;
+  const priceValue = item.price_from ?? item.price_start;
   const price = priceValue ? `${Number(priceValue).toLocaleString()} ₸` : null;
-  const locationZone = item.location_zone || item.alakol_zone;
+  const locationZone = item.location_zone || item.service_area;
   const zoneLabel = locationZone ? zoneLabelMap[locationZone] : null;
-  const isInAlakol = Boolean(item.works_in_alakol || locationZone);
+  const isInAlakol = Boolean(locationZone);
   const metaLabel = type === 'specialist'
     ? `${item.experience_years || 0} лет опыта`
     : item.distance_to_beach_m

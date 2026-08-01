@@ -2,28 +2,38 @@
   "expo": {
     "name": "Taptym",
     "slug": "service-app",
+    "owner": "xenodochial",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myserviceapp",
+    "scheme": "taptym",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.adiya.serviceapp"
+      "bundleIdentifier": "com.adiya.serviceapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.adiya.serviceapp",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#6366F1"
+        "backgroundColor": "#0B0E11"
       },
       "edgeToEdgeEnabled": true,
-      "navigationBar": {
-        "barStyle": "light-content",
-        "backgroundColor": "#6366F1",
-        "visible": "always"
-      }
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "versionCode": 2
+    },
+    "androidNavigationBar": {
+      "barStyle": "light-content",
+      "backgroundColor": "#0B0E11",
+      "visible": "leanback"
     },
     "web": {
       "output": "single",
@@ -37,10 +47,18 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#6366F1"
+          "backgroundColor": "#0B0E11"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Приложению Taptym нужен доступ к вашей геолокации для поиска специалистов и заведений поблизости."
+        }
+      ],
+      "expo-notifications",
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -50,9 +68,7 @@
       "router": {},
       "eas": {
         "projectId": "a236030d-2aad-439a-8fc9-e8124961bc27"
-      },
-      "supabaseUrl": "https://vliyawimvyeggrfypzgm.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsaXlhd2ltdnllZ2dyZnlwemdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MzM2OTEsImV4cCI6MjA5NzAwOTY5MX0.b77JyZR7cx-idjrtzT-zf3a63MvsxKwfuH33yM_V9Rs"
+      }
     }
   }
 }

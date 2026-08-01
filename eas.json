@@ -1,9 +1,11 @@
 {
   "cli": {
-    "version": ">= 19.0.8"
+    "version": ">= 19.0.8",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
+      "environment": "development",
       "developmentClient": true,
       "distribution": "internal",
       "android": {
@@ -14,6 +16,7 @@
       }
     },
     "preview": {
+      "environment": "preview",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
@@ -22,14 +25,29 @@
         "simulator": false
       },
       "env": {
-        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://vliyawimvyeggrfypzgm.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsaXlhd2ltdnllZ2dyZnlwemdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MzM2OTEsImV4cCI6MjA5NzAwOTY5MX0.b77JyZR7cx-idjrtzT-zf3a63MvsxKwfuH33yM_V9Rs"
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       }
     },
     "production": {
+      "environment": "production",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "simulator": false
+      },
       "env": {
-        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal"
       }
     }
   }

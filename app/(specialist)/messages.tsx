@@ -1,7 +1,7 @@
 import { ButtonGroup, Icon, Text, useTheme } from '@rneui/themed';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserAvatar } from '../../components/UserAvatar'; // <--- Наш компонент
 import { supabase } from '../../lib/supabase';
@@ -18,27 +18,27 @@ export default function SpecialistMessagesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (selectedIndex === 0) fetchChats();
-      else fetchCategories();
-    }, [selectedIndex])
-  );
-
-  async function fetchChats() {
+  const fetchChats = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase.rpc('get_my_chats');
     if (data) setChats(data);
     setLoading(false);
     setRefreshing(false);
-  }
+  }, [user]);
 
-  async function fetchCategories() {
-    const { data } = await supabase.from('categories').select('*').order('name');
+  const fetchCategories = useCallback(async () => {
+    const { data } = await supabase.from('service_categories').select('id, name, icon').eq('provider_type', 'specialist').eq('is_active', true).order('sort_order');
     if (data) setCategories(data);
     setLoading(false);
     setRefreshing(false);
-  }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (selectedIndex === 0) void fetchChats();
+      else void fetchCategories();
+    }, [fetchCategories, fetchChats, selectedIndex])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -74,16 +74,12 @@ export default function SpecialistMessagesScreen() {
   // Рендер категории
   const renderCategoryChat = ({ item }: { item: any }) => (
     <TouchableOpacity 
-        onPress={() => router.push({ pathname: `/chat/category/${item.id}`, params: { name: item.name } } as any)}
+        onPress={() => router.push({ pathname: '/chat/category/[id]', params: { id: item.id, name: item.name } })}
         activeOpacity={0.7}
         style={[styles.chatItem, { backgroundColor: theme.colors.grey0 }]}
     >
          <View style={[styles.catIcon, { backgroundColor: theme.colors.primary + '15' }]}>
-            {item.image_url ? (
-                <Image source={{ uri: item.image_url }} style={{ width: 28, height: 28 }} resizeMode="contain" />
-            ) : (
-                <Icon name="hash" type="feather" color={theme.colors.primary} size={24} />
-            )}
+            <Icon name={item.icon || 'hash'} type="feather" color={theme.colors.primary} size={24} />
          </View>
          
          <View style={styles.chatContent}>

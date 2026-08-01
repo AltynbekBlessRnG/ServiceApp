@@ -18,57 +18,96 @@ export default function CategoryChatScreen() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchMessages();
+    if (!id) return;
+    let active = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    void (async () => {
+      const { data: conversation, error: conversationError } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('kind', 'category')
+        .eq('category_id', id)
+        .maybeSingle();
+      if (!active || conversationError || !conversation) {
+        if (active) setLoading(false);
+        return;
+      }
+      setConversationId(conversation.id);
+      const { data } = await supabase
+        .from('messages')
+        .select('*, profiles!sender_id(full_name, avatar_url)')
+        .eq('conversation_id', conversation.id)
+        .eq('is_hidden', false)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (!active) return;
+      setMessages(data || []);
+      await supabase.rpc('mark_conversation_read', { p_conversation_id: conversation.id });
+      setLoading(false);
 
-    // ПОДПИСКА НА REAL-TIME
-    const channel = supabase.channel(`category_${id}`)
-      .on('postgres_changes', { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'category_messages',
-          filter: `category_id=eq.${id}`
-      }, async (payload) => {
-          // Когда пришло сообщение, нам нужно подтянуть имя автора
+      channel = supabase
+        .channel(`category:${conversation.id}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversation.id}`,
+        }, async (payload) => {
           const { data: profile } = await supabase
             .from('profiles')
             .select('full_name, avatar_url')
             .eq('id', payload.new.sender_id)
             .single();
-          
-          const msgWithProfile = { ...payload.new, profiles: profile };
-          setMessages(prev => [msgWithProfile, ...prev]);
-      })
-      .subscribe();
+          const message: Record<string, any> = { ...payload.new, profiles: profile };
+          setMessages((current) =>
+            current.some((item) => item.id === message.id) ? current : [message, ...current],
+          );
+          void supabase.rpc('mark_conversation_read', { p_conversation_id: conversation.id });
+        })
+        .subscribe();
+    })();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      active = false;
+      if (channel) void supabase.removeChannel(channel);
+    };
   }, [id]);
 
-  async function fetchMessages() {
-    const { data, error } = await supabase
-      .from('category_messages')
-      .select('*, profiles(full_name, avatar_url)')
-      .eq('category_id', id)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (data) setMessages(data);
-    setLoading(false);
-  }
-
   async function sendMessage() {
-    if (!newMessage.trim() || !user) return;
+    if (!newMessage.trim() || !user || !conversationId || sending) return;
     const content = newMessage.trim();
     setNewMessage('');
+    setSending(true);
 
-    const { error } = await supabase.from('category_messages').insert({
-        category_id: id,
+    // Realtime is for messages from other devices. Render our message now so a
+    // transient socket connection never makes a successful send look lost.
+    const optimisticMessage = {
+      id: `pending:${Date.now()}`,
+      conversation_id: conversationId,
+      sender_id: user.id,
+      content,
+      created_at: new Date().toISOString(),
+      is_hidden: false,
+      profiles: null,
+    };
+    setMessages((current) => [optimisticMessage, ...current]);
+
+    const { error } = await supabase.from('messages').insert({
+        conversation_id: conversationId,
         sender_id: user.id,
         content
     });
 
-    if (error) console.error(error);
+    if (error) {
+      setMessages((current) => current.filter((message) => message.id !== optimisticMessage.id));
+      setNewMessage(content);
+      console.error('Unable to send category message:', error);
+    }
+    setSending(false);
   }
 
   return (
@@ -99,7 +138,7 @@ export default function CategoryChatScreen() {
             return (
               <View style={[styles.msgRow, isMine && { justifyContent: 'flex-end' }]}>
                 {!isMine && <Avatar rounded size={35} source={item.profiles?.avatar_url ? { uri: item.profiles.avatar_url } : undefined} containerStyle={{ marginRight: 8 }} />}
-                <View style={[styles.bubble, { backgroundColor: isMine ? '#6366f1' : theme.colors.grey0 }]}>
+                <View style={[styles.bubble, { backgroundColor: isMine ? '#F0B90B' : theme.colors.grey0 }]}>
                   {!isMine && <Text style={styles.authorName}>{item.profiles?.full_name}</Text>}
                   <Text style={{ color: isMine ? '#fff' : theme.colors.black }}>{item.content}</Text>
                 </View>
@@ -118,7 +157,12 @@ export default function CategoryChatScreen() {
             placeholderTextColor="gray"
             multiline
           />
-          <TouchableOpacity style={styles.sendBtn} onPress={sendMessage} disabled={!newMessage.trim()}>
+          <TouchableOpacity
+            style={[styles.sendBtn, (!newMessage.trim() || sending) && styles.sendBtnDisabled]}
+            onPress={sendMessage}
+            disabled={!newMessage.trim() || sending}
+            accessibilityLabel="Отправить сообщение"
+          >
             <Icon name="send" type="feather" color="#fff" size={20} />
           </TouchableOpacity>
         </View>
@@ -136,5 +180,6 @@ const styles = StyleSheet.create({
   authorName: { fontSize: 10, fontWeight: 'bold', color: '#6366f1', marginBottom: 4 },
   inputArea: { flexDirection: 'row', padding: 15, alignItems: 'center', borderTopWidth: 0.5, borderTopColor: '#ddd' },
   input: { flex: 1, borderRadius: 25, paddingHorizontal: 15, paddingVertical: 10, maxHeight: 100 },
-  sendBtn: { width: 45, height: 45, borderRadius: 22.5, backgroundColor: '#6366f1', justifyContent: 'center', alignItems: 'center', marginLeft: 10 }
+  sendBtn: { width: 45, height: 45, borderRadius: 22.5, backgroundColor: '#F0B90B', justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
+  sendBtnDisabled: { opacity: 0.45 },
 });

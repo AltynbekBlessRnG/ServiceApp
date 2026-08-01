@@ -1,14 +1,15 @@
 import { Icon, useTheme } from '@rneui/themed';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { RoleGuard } from '../../components/RoleGuard';
 
 export default function SpecialistLayout() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
+    <RoleGuard role="specialist">
     <Tabs 
       screenOptions={{ 
         headerShown: false,
@@ -44,5 +45,6 @@ export default function SpecialistLayout() {
       {/* Скрытые страницы */}
       <Tabs.Screen name="edit-profile" options={{ href: null }} />
     </Tabs>
+    </RoleGuard>
   );
 }

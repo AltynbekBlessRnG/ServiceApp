@@ -10,14 +10,13 @@ import { useAuth } from '../../providers/AuthProvider';
 
 interface BookingItem {
   id: string;
-  date_time: string;
-  status: 'pending' | 'confirmed' | 'rejected' | 'completed';
+  starts_at: string;
+  ends_at: string | null;
+  status: 'pending' | 'confirmed' | 'rejected' | 'cancelled' | 'completed';
   message: string | null;
-  booking_type?: 'specialist' | 'venue';
+  kind: 'appointment' | 'stay';
   guest_count?: number | null;
-  check_in_date?: string | null;
-  check_out_date?: string | null;
-  specialist: {
+  provider: {
     id: string;
     full_name: string;
     avatar_url: string | null;
@@ -33,34 +32,36 @@ export default function ClientOrdersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<BookingItem | null>(null);
 
-  useFocusEffect(useCallback(() => { fetchOrders(); }, [user]));
-
-  async function fetchOrders() {
+  const fetchOrders = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
       .from('bookings')
-      .select('id, date_time, status, message, booking_type, guest_count, check_in_date, check_out_date, specialist:profiles!specialist_id (id, full_name, avatar_url)')
+      .select('id, starts_at, ends_at, status, message, kind, guest_count, provider:profiles!provider_id (id, full_name, avatar_url)')
       .eq('client_id', user.id)
       .order('created_at', { ascending: false });
-    if (data) setOrders(data as any);
+    if (data) setOrders(data as unknown as BookingItem[]);
     setLoading(false);
     setRefreshing(false);
-  }
+  }, [user]);
+
+  useFocusEffect(useCallback(() => { void fetchOrders(); }, [fetchOrders]));
 
   const getStatusConfig = (status: string) => {
     switch (status) {
       case 'confirmed': return { label: 'Подтверждено', color: '#10B981', bg: '#10B98115', icon: 'check-circle' };
       case 'rejected': return { label: 'Отменено', color: theme.colors.error, bg: theme.colors.error + '15', icon: 'x-circle' };
+      case 'cancelled': return { label: 'Отменено', color: theme.colors.error, bg: theme.colors.error + '15', icon: 'x-circle' };
       case 'completed': return { label: 'Завершено', color: theme.colors.grey2, bg: theme.colors.grey1, icon: 'check' };
       default: return { label: 'Ожидает', color: '#F59E0B', bg: '#FFFBEB', icon: 'clock' };
     }
   };
 
   const renderDateText = (item: BookingItem) => {
-    if (item.booking_type === 'venue' && item.check_in_date && item.check_out_date) {
-      return `${item.check_in_date} → ${item.check_out_date}`;
+    const startsAt = new Date(item.starts_at);
+    if (item.kind === 'stay' && item.ends_at) {
+      return `${startsAt.toLocaleDateString('ru-RU')} → ${new Date(item.ends_at).toLocaleDateString('ru-RU')}`;
     }
-    return item.date_time;
+    return `${startsAt.toLocaleDateString('ru-RU')} ${startsAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
   };
 
   const renderItem = ({ item }: { item: BookingItem }) => {
@@ -70,7 +71,7 @@ export default function ClientOrdersScreen() {
         <View style={styles.cardTop}>
           <View style={styles.dateBlock}>
             <Text style={[styles.dateText, { color: theme.colors.black }]}>{renderDateText(item)}</Text>
-            {item.booking_type === 'venue' && item.guest_count ? <Text style={{ color: theme.colors.primary, fontWeight: '800' }}>{item.guest_count} гостя</Text> : null}
+            {item.kind === 'stay' && item.guest_count ? <Text style={{ color: theme.colors.primary, fontWeight: '800' }}>{item.guest_count} гостя</Text> : null}
           </View>
           <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
             <Icon name={status.icon} type="feather" size={12} color={status.color} style={{ marginRight: 4 }} />
@@ -81,10 +82,10 @@ export default function ClientOrdersScreen() {
         <View style={styles.divider} />
 
         <View style={styles.profileRow}>
-          <UserAvatar avatarUrl={item.specialist?.avatar_url} size={45} />
+          <UserAvatar avatarUrl={item.provider?.avatar_url} size={45} />
           <View style={{ marginLeft: 12, flex: 1 }}>
-            <Text style={[styles.specName, { color: theme.colors.black }]}>{item.specialist?.full_name}</Text>
-            <Text style={styles.subText}>{item.booking_type === 'venue' ? 'Зона отдыха' : 'Специалист'}</Text>
+            <Text style={[styles.specName, { color: theme.colors.black }]}>{item.provider?.full_name}</Text>
+            <Text style={styles.subText}>{item.kind === 'stay' ? 'Заведение' : 'Специалист'}</Text>
           </View>
           <Icon name="chevron-right" type="feather" color={theme.colors.grey2} />
         </View>
@@ -126,12 +127,12 @@ export default function ClientOrdersScreen() {
 
             <View style={[styles.detailBox, { backgroundColor: theme.colors.grey0 }]}>
               <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                <UserAvatar avatarUrl={selectedOrder?.specialist?.avatar_url} size={80} />
-                <Text style={{ fontSize: 18, fontWeight: '800', marginTop: 10, color: theme.colors.black }}>{selectedOrder?.specialist?.full_name}</Text>
+                <UserAvatar avatarUrl={selectedOrder?.provider?.avatar_url} size={80} />
+                <Text style={{ fontSize: 18, fontWeight: '800', marginTop: 10, color: theme.colors.black }}>{selectedOrder?.provider?.full_name}</Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Тип</Text>
-                <Text style={[styles.infoValue, { color: theme.colors.black }]}>{selectedOrder?.booking_type === 'venue' ? 'Зона отдыха' : 'Специалист'}</Text>
+                <Text style={[styles.infoValue, { color: theme.colors.black }]}>{selectedOrder?.kind === 'stay' ? 'Заведение' : 'Специалист'}</Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Дата</Text>
@@ -158,9 +159,29 @@ export default function ClientOrdersScreen() {
             <Button
               title="Написать в чат"
               icon={<Icon name="message-circle" type="feather" color="#fff" style={{ marginRight: 10 }} />}
-              onPress={() => { setSelectedOrder(null); router.push(`/chat/${selectedOrder?.specialist.id}`); }}
+              onPress={() => { setSelectedOrder(null); router.push(`/chat/${selectedOrder?.provider.id}`); }}
               buttonStyle={{ backgroundColor: theme.colors.primary, borderRadius: 16, height: 50 }}
             />
+            {selectedOrder?.status === 'completed' ? (
+              <Button
+                title="Оставить отзыв"
+                type="outline"
+                onPress={() => {
+                  const order = selectedOrder;
+                  setSelectedOrder(null);
+                  router.push({
+                    pathname: '/(client)/add-review',
+                    params: {
+                      bookingId: order.id,
+                      targetId: order.provider.id,
+                      name: order.provider.full_name,
+                      avatar: order.provider.avatar_url || '',
+                    },
+                  });
+                }}
+                containerStyle={{ marginTop: 12 }}
+              />
+            ) : null}
           </View>
         </View>
       </Modal>

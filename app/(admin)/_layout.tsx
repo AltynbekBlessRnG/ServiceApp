@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { RoleGuard } from '../../components/RoleGuard';
 export default function AdminLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return <RoleGuard requireAdmin><Stack screenOptions={{ headerShown: false }} /></RoleGuard>;
 }

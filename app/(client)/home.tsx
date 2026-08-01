@@ -1,8 +1,10 @@
 import { Icon, Text, useTheme } from '@rneui/themed';
+import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Dimensions, FlatList, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -10,31 +12,41 @@ const PADDING = 20;
 const CARD_GAP = 12;
 const CARD_WIDTH = (SCREEN_WIDTH - PADDING * 2 - CARD_GAP) / 2;
 
-const MAIN_CATEGORIES = [
-  { key: 'beauty', label: 'Красота', icon: 'heart', sub: ['Барбершопы', 'Салоны красоты', 'Массаж', 'Маникюр', 'Макияж'] },
-  { key: 'auto', label: 'Авто', icon: 'truck', sub: ['Детейлинг', 'СТО', 'Аренда авто', 'Трансфер'] },
-  { key: 'events', label: 'Мероприятия', icon: 'gift', sub: ['Ведущие', 'Фотографы', 'Музыканты', 'Тамада'] },
-  { key: 'leisure', label: 'Отдых', icon: 'sun', sub: ['Зоны отдыха', 'Глэмпинги', 'Отели', 'Коттеджи'] },
-  { key: 'business', label: 'Бизнес', icon: 'trending-up', sub: ['SMM', 'Таргетолог', 'Маркетолог', 'Консалтинг'] },
-  { key: 'legal', label: 'Юристы', icon: 'briefcase', sub: ['Юрист', 'Адвокат', 'Бухгалтер'] },
-  { key: 'education', label: 'Образование', icon: 'book-open', sub: ['Репетиторы', 'Курсы', 'Языки'] },
-  { key: 'home', label: 'Дом и ремонт', icon: 'home', sub: ['Клининг', 'Ремонт', 'Дизайн интерьера'] },
-];
-
-const VENUE_CATEGORIES = [
-  { key: 'v_food', label: 'Питание', icon: 'coffee', sub: ['Рестораны', 'Пабы', 'Кофейни', 'Пиццерии', 'Кальянные'] },
-  { key: 'v_fun', label: 'Развлечения', icon: 'music', sub: ['Бары', 'Компьютерные клубы', 'Караоке', 'Ночные клубы'] },
-  { key: 'v_beauty', label: 'Красота', icon: 'heart', sub: ['Салоны красоты', 'Барбершопы', 'Фотостудии'] },
-  { key: 'v_stay', label: 'Жилье', icon: 'home', sub: ['Зоны отдыха', 'Пансионаты', 'Гостевые дома', 'Коттеджи'] },
-];
+type ProviderType = 'specialist' | 'venue';
+type CatalogCategory = {
+  key: string;
+  label: string;
+  icon: string;
+  sub: string[];
+};
 
 export default function ClientHome() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  const [mode, setMode] = useState<'specialist' | 'venue'>('specialist');
+  const [mode, setMode] = useState<ProviderType>('specialist');
+  const { data: categories = [], isLoading: categoriesLoading, isError, refetch } = useQuery({
+    queryKey: ['service-categories', mode],
+    queryFn: async (): Promise<CatalogCategory[]> => {
+      const { data, error } = await supabase
+        .from('service_categories')
+        .select('slug, name, icon, services(name, sort_order)')
+        .eq('provider_type', mode)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      return (data || []).map((category: any) => ({
+        key: category.slug,
+        label: category.name,
+        icon: category.icon,
+        sub: (category.services || [])
+          .sort((a: any, b: any) => a.sort_order - b.sort_order)
+          .map((service: any) => service.name),
+      }));
+    },
+  });
 
-  const renderMainCategory = ({ item }: { item: typeof MAIN_CATEGORIES[0] }) => (
+  const renderMainCategory = ({ item }: { item: CatalogCategory }) => (
     <TouchableOpacity
       style={styles.mainCard}
       activeOpacity={0.7}
@@ -119,8 +131,6 @@ export default function ClientHome() {
     </View>
   );
 
-  const categories = mode === 'venue' ? VENUE_CATEGORIES : MAIN_CATEGORIES;
-
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle="light-content" />
@@ -132,6 +142,16 @@ export default function ClientHome() {
         columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={{ paddingTop: insets.top + 10, paddingHorizontal: PADDING, paddingBottom: 100 }}
         renderItem={renderMainCategory}
+        refreshing={categoriesLoading}
+        onRefresh={refetch}
+        ListEmptyComponent={
+          !categoriesLoading ? (
+            <TouchableOpacity style={styles.emptyState} onPress={() => refetch()}>
+              <Icon name={isError ? 'alert-circle' : 'grid'} type="feather" size={36} color="#848E9C" />
+              <Text style={styles.emptyText}>{isError ? 'Не удалось загрузить категории. Нажмите, чтобы повторить.' : 'Категории пока не добавлены'}</Text>
+            </TouchableOpacity>
+          ) : null
+        }
       />
     </View>
   );
@@ -236,4 +256,6 @@ const styles = StyleSheet.create({
   },
   mainCardTitle: { color: '#FAFAFA', fontSize: 16, fontWeight: '800', marginBottom: 6 },
   mainCardSub: { color: '#848E9C', fontSize: 13, lineHeight: 18, fontWeight: '500' },
+  emptyState: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 20 },
+  emptyText: { color: '#848E9C', textAlign: 'center', marginTop: 12, lineHeight: 20 },
 });

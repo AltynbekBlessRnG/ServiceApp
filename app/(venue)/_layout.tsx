@@ -1,14 +1,15 @@
 import { Icon, useTheme } from '@rneui/themed';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { RoleGuard } from '../../components/RoleGuard';
 
 export default function VenueLayout() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
+    <RoleGuard role="venue">
     <Tabs 
       screenOptions={{ 
         headerShown: false,
@@ -33,5 +34,6 @@ export default function VenueLayout() {
       
       <Tabs.Screen name="edit-profile" options={{ href: null }} />
     </Tabs>
+    </RoleGuard>
   );
 }

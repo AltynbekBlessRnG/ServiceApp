@@ -5,7 +5,6 @@ import React, { useState, useCallback } from 'react';
 import { FlatList, RefreshControl, StyleSheet, TouchableOpacity, View, BackHandler, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserAvatar } from '../../components/UserAvatar';
-import { sendPushNotification } from '../../lib/push';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 
@@ -31,37 +30,35 @@ export default function VenueHome() {
     }, [])
   );
 
-  useFocusEffect(React.useCallback(() => { if (!isLoading && user) fetchBookings(); }, [user, isLoading]));
-
-  async function fetchBookings() {
+  const fetchBookings = React.useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase.from('bookings').select(`*, client:profiles!client_id (full_name, avatar_url, phone)`).eq('specialist_id', user.id).order('created_at', { ascending: false });
-    setBookings(data || []); setLoadingData(false); setRefreshing(false);
-  }
+    const { data } = await supabase.from('bookings').select(`*, client:profiles!client_id (full_name, avatar_url)`).eq('provider_id', user.id).order('created_at', { ascending: false });
+    setBookings(data || []);
+    setRefreshing(false);
+  }, [user]);
 
-  async function updateStatus(id: string, clientId: string, status: string) {
+  async function updateStatus(id: string, status: 'confirmed' | 'rejected' | 'completed') {
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
-    await supabase.from('bookings').update({ status }).eq('id', id);
-
-    let title = '';
-    let body = '';
-    if (status === 'confirmed') {
-      title = 'Бронь подтверждена! ✅';
-      body = 'Заведение приняло вашу заявку. Ждем вас!';
-    } else if (status === 'rejected') {
-      title = 'Бронь отклонена ❌';
-      body = 'К сожалению, заведение не может принять вас в это время.';
-    } else if (status === 'completed') {
-      title = 'Бронь завершена 🎉';
-      body = 'Спасибо, что выбрали нас! Не забудьте оставить отзыв.';
-    }
-    if (title && clientId) {
-      await sendPushNotification(clientId, title, body);
+    const { error } = await supabase.rpc('transition_booking', { p_booking_id: id, p_status: status });
+    if (error) {
+      await fetchBookings();
+      Alert.alert('Ошибка', error.message);
+      return;
     }
   }
+
+  useFocusEffect(React.useCallback(() => {
+    if (!isLoading && user) void fetchBookings();
+  }, [fetchBookings, isLoading, user]));
 
   const renderItem = ({ item }: { item: any }) => {
-    const [date, time] = item.date_time.split(' ');
+    const startsAt = new Date(item.starts_at);
+    const date = item.ends_at
+      ? `${startsAt.toLocaleDateString('ru-RU')} — ${new Date(item.ends_at).toLocaleDateString('ru-RU')}`
+      : startsAt.toLocaleDateString('ru-RU');
+    const time = item.kind === 'stay'
+      ? `${item.guest_count || 1} гост.`
+      : startsAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     return (
       <View style={[styles.card, { backgroundColor: theme.colors.grey0, borderColor: theme.colors.grey1 }]}>
         <View style={styles.cardHeader}>
@@ -90,17 +87,17 @@ export default function VenueHome() {
 
         {item.status === 'pending' && (
             <View style={styles.actionRow}>
-                <TouchableOpacity style={[styles.btn, { backgroundColor: '#EF444420', flex: 1, marginRight: 10 }]} onPress={() => updateStatus(item.id, item.client_id, 'rejected')}>
+                <TouchableOpacity style={[styles.btn, { backgroundColor: '#EF444420', flex: 1, marginRight: 10 }]} onPress={() => updateStatus(item.id, 'rejected')}>
                     <Text style={{ color: '#EF4444', fontWeight: '800' }}>НЕТ МЕСТ</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.btn, { backgroundColor: '#10B981', flex: 1 }]} onPress={() => updateStatus(item.id, item.client_id, 'confirmed')}>
+                <TouchableOpacity style={[styles.btn, { backgroundColor: '#10B981', flex: 1 }]} onPress={() => updateStatus(item.id, 'confirmed')}>
                     <Text style={{ color: '#fff', fontWeight: '800' }}>ПРИНЯТЬ</Text>
                 </TouchableOpacity>
             </View>
         )}
         {item.status === 'confirmed' && (
             <View style={styles.actionRow}>
-                <TouchableOpacity style={[styles.btn, { backgroundColor: '#3B82F6', flex: 1 }]} onPress={() => updateStatus(item.id, item.client_id, 'completed')}>
+                <TouchableOpacity style={[styles.btn, { backgroundColor: '#3B82F6', flex: 1 }]} onPress={() => updateStatus(item.id, 'completed')}>
                     <Text style={{ color: '#fff', fontWeight: '800' }}>ЗАВЕРШИТЬ</Text>
                 </TouchableOpacity>
             </View>

@@ -1,7 +1,7 @@
 import { ButtonGroup, Icon, Text, useTheme } from '@rneui/themed';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
@@ -20,29 +20,25 @@ export default function MessagesListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useFocusEffect(useCallback(() => { 
-      if (selectedIndex === 0) fetchChats();
-      else fetchCategories();
-  }, [selectedIndex]));
-
-  // 1. Грузим личные диалоги
-  async function fetchChats() {
+  const fetchChats = useCallback(async () => {
     if (!user) return;
-    // Используем RPC функцию, если она есть, либо запрос к таблице messages
-    const { data, error } = await supabase.rpc('get_my_chats');
+    const { data } = await supabase.rpc('get_my_chats');
     if (data) setChats(data);
     setLoading(false);
     setRefreshing(false);
-  }
+  }, [user]);
 
-  // 2. Грузим категории (Общие чаты)
-  async function fetchCategories() {
-    // Показываем клиенту только категории специалистов (или все, если хочешь)
-    const { data } = await supabase.from('categories').select('*').order('name');
+  const fetchCategories = useCallback(async () => {
+    const { data } = await supabase.from('service_categories').select('id, name, icon, provider_type').eq('is_active', true).order('sort_order');
     if (data) setCategories(data);
     setLoading(false);
     setRefreshing(false);
-  }
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+      if (selectedIndex === 0) void fetchChats();
+      else void fetchCategories();
+  }, [fetchCategories, fetchChats, selectedIndex]));
 
   const onRefresh = () => { 
       setRefreshing(true); 
@@ -78,21 +74,17 @@ export default function MessagesListScreen() {
   // --- РЕНДЕР ОБЩЕГО ЧАТА (КАТЕГОРИИ) ---
   const renderCategoryChat = ({ item }: { item: any }) => (
     <TouchableOpacity 
-        onPress={() => router.push({ pathname: `/chat/category/${item.id}`, params: { name: item.name } } as any)}
+        onPress={() => router.push({ pathname: '/chat/category/[id]', params: { id: item.id, name: item.name } })}
         activeOpacity={0.7}
         style={[styles.chatItem, { backgroundColor: theme.colors.grey0 }]}
     >
-         <View style={[styles.catIcon, { backgroundColor: item.bg_color || theme.colors.primary + '15' }]}>
-            {item.image_url ? (
-                <Image source={{ uri: item.image_url }} style={{ width: 28, height: 28 }} resizeMode="contain" />
-            ) : (
-                <Icon name="hash" type="feather" color={theme.colors.primary} size={24} />
-            )}
+         <View style={[styles.catIcon, { backgroundColor: theme.colors.primary + '15' }]}>
+            <Icon name={item.icon || 'hash'} type="feather" color={theme.colors.primary} size={24} />
          </View>
          
          <View style={styles.chatContent}>
             <Text style={[styles.name, { color: theme.colors.black }]}>{item.name}</Text>
-            <Text style={[styles.lastMsg, { color: theme.colors.grey2 }]}>Общий чат • {item.type === 'venue' ? 'Заведения' : 'Мастера'}</Text>
+            <Text style={[styles.lastMsg, { color: theme.colors.grey2 }]}>Общий чат • {item.provider_type === 'venue' ? 'Заведения' : 'Мастера'}</Text>
          </View>
          <Icon name="users" type="feather" size={20} color={theme.colors.grey3} />
     </TouchableOpacity>

@@ -1,198 +1,126 @@
 import { Icon, Text, useTheme } from '@rneui/themed';
+import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React from 'react';
+import { ActivityIndicator, FlatList, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 
 const PADDING = 20;
-const CARD_GAP = 12;
 
-const SUBCATEGORY_DATA: Record<string, { icon: string; subs: string[] }> = {
-  beauty: {
-    icon: 'heart',
-    subs: ['Барбершопы', 'Салоны красоты', 'Массаж', 'Маникюр', 'Макияж'],
-  },
-  auto: {
-    icon: 'truck',
-    subs: ['Детейлинг', 'СТО', 'Аренда авто', 'Трансфер'],
-  },
-  events: {
-    icon: 'gift',
-    subs: ['Ведущие', 'Фотографы', 'Музыканты', 'Тамада', 'Рестораны'],
-  },
-  leisure: {
-    icon: 'sun',
-    subs: ['Зоны отдыха', 'Глэмпинги', 'Отели', 'Коттеджи'],
-  },
-  business: {
-    icon: 'trending-up',
-    subs: ['SMM', 'Таргетолог', 'Маркетолог', 'Консалтинг'],
-  },
-  legal: {
-    icon: 'briefcase',
-    subs: ['Юрист', 'Адвокат', 'Бухгалтер'],
-  },
-  education: {
-    icon: 'book-open',
-    subs: ['Репетиторы', 'Курсы', 'Языки'],
-  },
-  home: {
-    icon: 'home',
-    subs: ['Клининг', 'Ремонт', 'Дизайн интерьера'],
-  },
-  v_food: {
-    icon: 'coffee',
-    subs: ['Рестораны', 'Пабы', 'Кофейни', 'Пиццерии', 'Кальянные'],
-  },
-  v_fun: {
-    icon: 'music',
-    subs: ['Бары', 'Компьютерные клубы', 'Караоке', 'Ночные клубы'],
-  },
-  v_beauty: {
-    icon: 'heart',
-    subs: ['Салоны красоты', 'Барбершопы', 'Фотостудии'],
-  },
-  v_stay: {
-    icon: 'home',
-    subs: ['Зоны отдыха', 'Пансионаты', 'Гостевые дома', 'Коттеджи'],
-  },
+type ProviderType = 'specialist' | 'venue';
+type ServiceItem = {
+  id: number;
+  slug: string;
+  name: string;
+  icon: string;
+  sort_order: number;
 };
-
-const CATEGORY_LABELS: Record<string, string> = {
-  beauty: 'Красота',
-  auto: 'Авто',
-  events: 'Мероприятия',
-  leisure: 'Отдых',
-  business: 'Бизнес',
-  legal: 'Юристы',
-  education: 'Образование',
-  home: 'Дом и ремонт',
-  v_food: 'Питание',
-  v_fun: 'Развлечения',
-  v_beauty: 'Красота',
-  v_stay: 'Жилье',
-};
-
-const getSubIcon = (name: string) => {
-  const n = name.toLowerCase();
-  if (n.includes('барбер')) return 'scissors';
-  if (n.includes('салон')) return 'heart';
-  if (n.includes('массаж')) return 'heart';
-  if (n.includes('маникюр')) return 'edit-3';
-  if (n.includes('макияж')) return 'edit-3';
-  if (n.includes('детейлинг')) return 'droplet';
-  if (n.includes('сто') || n.includes('ремонт')) return 'tool';
-  if (n.includes('аренда авто')) return 'navigation';
-  if (n.includes('трансфер')) return 'navigation';
-  if (n.includes('ведущ')) return 'music';
-  if (n.includes('фотограф')) return 'camera';
-  if (n.includes('музык')) return 'music';
-  if (n.includes('тамада')) return 'users';
-  if (n.includes('ресторан')) return 'coffee';
-  if (n.includes('зона') || n.includes('отдых')) return 'home';
-  if (n.includes('глэмпинг')) return 'home';
-  if (n.includes('отел')) return 'home';
-  if (n.includes('коттедж')) return 'home';
-  if (n.includes('smm')) return 'share-2';
-  if (n.includes('таргет')) return 'target';
-  if (n.includes('маркетолог')) return 'trending-up';
-  if (n.includes('консалтинг')) return 'briefcase';
-  if (n.includes('юрист') || n.includes('адвокат')) return 'shield';
-  if (n.includes('бухгалтер')) return 'briefcase';
-  if (n.includes('репетитор') || n.includes('курс') || n.includes('язык')) return 'book-open';
-  if (n.includes('клининг')) return 'home';
-  if (n.includes('дизайн')) return 'pen-tool';
-  if (n.includes('кофейн')) return 'coffee';
-  if (n.includes('фотостуди')) return 'camera';
-  if (n.includes('пансионат')) return 'home';
-  if (n.includes('гостев')) return 'home';
-  if (n.includes('бар') && !n.includes('барбер')) return 'star';
-  if (n.includes('паб')) return 'star';
-  if (n.includes('пиццер')) return 'coffee';
-  if (n.includes('кальян')) return 'cloud';
-  if (n.includes('компьютер')) return 'zap';
-  if (n.includes('караоке')) return 'music';
-  if (n.includes('ночн')) return 'zap';
-  return 'map-pin';
+type CategoryDetails = {
+  slug: string;
+  name: string;
+  icon: string;
+  services: ServiceItem[];
 };
 
 export default function SubcategoryScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { categoryKey, type } = useLocalSearchParams<{ categoryKey: string; type: string }>();
-  const [categories, setCategories] = useState<any[]>([]);
+  const { categoryKey = '', type = 'specialist' } = useLocalSearchParams<{
+    categoryKey: string;
+    type: ProviderType;
+  }>();
+  const providerType: ProviderType = type === 'venue' ? 'venue' : 'specialist';
 
-  const data = SUBCATEGORY_DATA[categoryKey || ''] || { icon: 'grid', subs: [] };
-  const label = CATEGORY_LABELS[categoryKey || ''] || categoryKey;
+  const { data: category, isLoading, isError, refetch } = useQuery({
+    queryKey: ['service-category', providerType, categoryKey],
+    enabled: Boolean(categoryKey),
+    queryFn: async (): Promise<CategoryDetails> => {
+      const { data, error } = await supabase
+        .from('service_categories')
+        .select('slug, name, icon, services(id, slug, name, icon, sort_order)')
+        .eq('provider_type', providerType)
+        .eq('slug', categoryKey)
+        .eq('is_active', true)
+        .single();
+      if (error) throw error;
+      const raw = data as unknown as CategoryDetails;
+      return {
+        slug: raw.slug,
+        name: raw.name,
+        icon: raw.icon,
+        services: (raw.services || []).sort(
+          (a: ServiceItem, b: ServiceItem) => a.sort_order - b.sort_order,
+        ),
+      };
+    },
+  });
 
-  const fetchCategories = useCallback(async () => {
-    const { data } = await supabase.from('categories').select('*').eq('type', type || 'specialist');
-    if (data) setCategories(data);
-  }, [type]);
-
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
-
-  const handleSubPress = (subName: string) => {
-    const matched = categories.find(
-      (c) => c.name.toLowerCase().includes(subName.toLowerCase()) || subName.toLowerCase().includes(c.name.toLowerCase())
-    );
-    if (matched) {
-      router.push({
-        pathname: '/(client)/category-results',
-        params: { id: matched.id, name: subName, type: type || 'specialist' },
-      } as any);
-    }
+  const openService = (service: ServiceItem) => {
+    router.push({
+      pathname: '/(client)/category-results',
+      params: {
+        categorySlug: categoryKey,
+        serviceSlug: service.slug,
+        name: service.name,
+        type: providerType,
+      },
+    });
   };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle="light-content" />
-
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Icon name="arrow-left" type="feather" color="#FAFAFA" size={22} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{label}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{category?.name || 'Услуги'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <FlatList
-        data={data.subs}
-        keyExtractor={(item) => item}
-        numColumns={2}
-        columnWrapperStyle={styles.columnWrapper}
-        contentContainerStyle={{ padding: PADDING, paddingBottom: 100 }}
-        renderItem={({ item }) => {
-          const iconName = getSubIcon(item);
-          return (
-            <TouchableOpacity
-              style={styles.card}
-              activeOpacity={0.7}
-              onPress={() => handleSubPress(item)}
-            >
+      {isLoading ? (
+        <ActivityIndicator color="#F0B90B" size="large" style={styles.loader} />
+      ) : (
+        <FlatList
+          data={category?.services || []}
+          keyExtractor={(item) => item.slug}
+          numColumns={3}
+          columnWrapperStyle={styles.columnWrapper}
+          contentContainerStyle={{ padding: PADDING, paddingBottom: 100, flexGrow: 1 }}
+          refreshing={isLoading}
+          onRefresh={refetch}
+          renderItem={({ item }) => (
+            <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => openService(item)}>
               <View style={styles.cardIconBox}>
-                <Icon name={iconName} type="feather" size={24} color="#F0B90B" />
+                <Icon name={item.icon || 'map-pin'} type="feather" size={26} color="#F0B90B" />
               </View>
-              <Text style={styles.cardTitle}>{item}</Text>
+              <Text style={styles.cardTitle} numberOfLines={2}>{item.name}</Text>
             </TouchableOpacity>
-          );
-        }}
-      />
+          )}
+          ListEmptyComponent={
+            <TouchableOpacity style={styles.emptyState} onPress={() => refetch()}>
+              <Icon name={isError ? 'alert-circle' : 'inbox'} type="feather" size={42} color="#848E9C" />
+              <Text style={styles.emptyText}>
+                {isError ? 'Не удалось загрузить услуги. Нажмите, чтобы повторить.' : 'В этой категории пока нет услуг'}
+              </Text>
+            </TouchableOpacity>
+          }
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  loader: { flex: 1 },
   header: {
     flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 10,
   },
   backBtn: {
     width: 40,
@@ -202,26 +130,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: { color: '#FAFAFA', fontSize: 18, fontWeight: '800' },
-  columnWrapper: { gap: CARD_GAP },
+  headerTitle: { color: '#FAFAFA', fontSize: 18, fontWeight: '800', flex: 1, textAlign: 'center' },
+  columnWrapper: { gap: 10 },
   card: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: '#1E2329',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: CARD_GAP,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#2B3139',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   cardIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
+    width: 54,
+    height: 54,
+    borderRadius: 16,
     backgroundColor: 'rgba(240, 185, 11, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  cardTitle: { color: '#FAFAFA', fontSize: 14, fontWeight: '700' },
+  cardTitle: { color: '#FAFAFA', fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  emptyState: { flex: 1, minHeight: 300, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  emptyText: { color: '#848E9C', textAlign: 'center', marginTop: 12, lineHeight: 20 },
 });

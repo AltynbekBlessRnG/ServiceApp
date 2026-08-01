@@ -1,13 +1,15 @@
 import { Text, Button, Icon, Input, useTheme } from '@rneui/themed';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
 import { UserAvatar } from '../components/UserAvatar';
 import { supabase } from '../lib/supabase';
 import { uploadFileToSupabase } from '../lib/uploader';
+import { openLegalDocument } from '../lib/legal';
+import { signOutSecurely } from '../lib/auth-actions';
 import { useAuth } from '../providers/AuthProvider';
 
 const SettingItem = ({ icon, title, onPress, color, theme }: any) => (
@@ -37,19 +39,25 @@ export default function SettingsScreen() {
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState(''); // <--- ДОБАВИЛИ ГОРОД
 
-  useEffect(() => {
-    if (user) fetchProfile();
-  }, [user]);
-
-  async function fetchProfile() {
-    const { data } = await supabase.from('profiles').select('*').eq('id', user?.id).single();
+  const fetchProfile = useCallback(async () => {
+    if (!user) return;
+    const [{ data }, { data: privateRows }, { data: isAdmin }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', user.id).single(),
+      supabase.rpc('get_my_private_profile'),
+      supabase.rpc('is_admin'),
+    ]);
     if (data) {
-      setProfile(data);
+      const phoneValue = privateRows?.[0]?.phone || '';
+      setProfile({ ...data, phone: phoneValue, is_admin: Boolean(isAdmin) });
       setFullName(data.full_name || '');
-      setPhone(data.phone || '');
+      setPhone(phoneValue);
       setCity(data.city || ''); // <--- ПОДГРУЖАЕМ ГОРОД
     }
-  }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) void fetchProfile();
+  }, [fetchProfile, user]);
 
   async function pickImage() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -77,19 +85,18 @@ export default function SettingsScreen() {
   async function handleSave() {
     setLoading(true);
     // <--- СОХРАНЯЕМ ГОРОД В БАЗУ
-    const { error } = await supabase.from('profiles').update({ 
-        full_name: fullName, 
-        phone: phone,
-        city: city 
-    }).eq('id', user?.id);
+    const [{ error }, { error: privateError }] = await Promise.all([
+      supabase.from('profiles').update({ full_name: fullName, city }).eq('id', user?.id),
+      supabase.rpc('update_my_private_profile', { p_phone: phone }),
+    ]);
 
     setLoading(false);
-    if (error) Alert.alert("Ошибка", error.message);
+    if (error || privateError) Alert.alert("Ошибка", error?.message || privateError?.message);
     else Alert.alert("Успешно", "Данные профиля обновлены");
   }
 
   async function handleSignOut() {
-    await supabase.auth.signOut();
+    await signOutSecurely();
     router.replace('/(auth)/login');
   }
 
@@ -97,9 +104,14 @@ export default function SettingsScreen() {
     Alert.alert("Удалить аккаунт?", "Это действие необратимо.", [
         { text: "Отмена", style: "cancel" },
         { text: "Удалить", style: "destructive", onPress: async () => {
-            await supabase.rpc('delete_own_account');
-            await supabase.auth.signOut();
-            router.replace('/(auth)/login');
+            try {
+              const { error } = await supabase.functions.invoke('delete-account', { method: 'DELETE' });
+              if (error) throw error;
+              await signOutSecurely();
+              router.replace('/(auth)/login');
+            } catch (error) {
+              Alert.alert('Не удалось удалить аккаунт', error instanceof Error ? error.message : 'Попробуйте позже');
+            }
         }}
     ]);
   };
@@ -146,6 +158,9 @@ export default function SettingsScreen() {
         <View style={styles.section}>
             <Text style={styles.sectionTitle}>ПРИЛОЖЕНИЕ</Text>
             <SettingItem icon="info" title="О приложении" onPress={() => router.push('/credits')} theme={theme} />
+            <SettingItem icon="file-text" title="Политика конфиденциальности" onPress={() => void openLegalDocument('privacy').catch((error) => Alert.alert('Документ недоступен', error.message))} theme={theme} />
+            <SettingItem icon="book-open" title="Условия использования" onPress={() => void openLegalDocument('terms').catch((error) => Alert.alert('Документ недоступен', error.message))} theme={theme} />
+            <SettingItem icon="life-buoy" title="Поддержка" onPress={() => void openLegalDocument('support').catch((error) => Alert.alert('Поддержка недоступна', error.message))} theme={theme} />
             {profile?.is_admin && <SettingItem icon="shield" title="Админ Панель" onPress={() => router.push('/(admin)/dashboard')} color="#F0B90B" theme={theme} />}
         </View>
 

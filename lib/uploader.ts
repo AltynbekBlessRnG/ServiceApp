@@ -38,7 +38,7 @@ export async function uploadFileToSupabase(bucket: string, uri: string, fileName
     console.log(`[Uploader] Загрузка в бакет: ${bucket}`);
 
     // 3. Загружаем
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from(bucket)
       .upload(fileName, decode(base64), {
         contentType: contentType,

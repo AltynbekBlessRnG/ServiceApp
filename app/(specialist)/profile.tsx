@@ -4,6 +4,7 @@ import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
 import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
+import { signOutSecurely } from '../../lib/auth-actions';
 import { useAuth } from '../../providers/AuthProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -32,7 +33,7 @@ export default function SpecialistProfileScreen() {
           if (data && isActive) {
             setProfile(data);
           }
-        } catch (e) {
+        } catch {
             // ignore
         } finally {
             if (isActive) setLoading(false);
@@ -49,7 +50,7 @@ export default function SpecialistProfileScreen() {
       Alert.alert("Выход", "Выйти из аккаунта?", [
           { text: "Отмена", style: "cancel" },
           { text: "Выйти", style: "destructive", onPress: async () => {
-              await supabase.auth.signOut();
+              await signOutSecurely();
               router.replace('/(auth)/login');
           }}
       ]);

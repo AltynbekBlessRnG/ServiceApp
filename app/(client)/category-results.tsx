@@ -1,4 +1,5 @@
 import { Icon, Text, useTheme } from '@rneui/themed';
+import { useQuery } from '@tanstack/react-query';
 import * as Location from 'expo-location';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -8,289 +9,231 @@ import { AppHeader } from '../../components/AppHeader';
 import { ProfileCard } from '../../components/ProfileCard';
 import { supabase } from '../../lib/supabase';
 
+type ProviderType = 'specialist' | 'venue';
+type SortBy = 'default' | 'price_asc' | 'price_desc' | 'distance';
+type ServiceFilter = { slug: string; name: string };
+type SearchRow = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  city: string | null;
+  provider_type: ProviderType;
+  category_name: string;
+  service_name: string;
+  service_slug: string;
+  price_from: number;
+  experience_years: number | null;
+  capacity: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  distance_to_beach_m: number | null;
+  avg_rating: number;
+  review_count: number;
+  distance_km: number | null;
+};
+
 export default function CategoryResultsScreen() {
-  const { id, name, type } = useLocalSearchParams();
+  const { categorySlug = '', serviceSlug, name = 'Результаты', type = 'specialist' } =
+    useLocalSearchParams<{
+      categorySlug: string;
+      serviceSlug?: string;
+      name: string;
+      type: ProviderType;
+    }>();
+  const providerType: ProviderType = type === 'venue' ? 'venue' : 'specialist';
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-
-  // Принудительно превращаем ID в число
-  const categoryId = Number(id);
-
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Фильтры
-  const [subcategories, setSubcategories] = useState<any[]>([]);
-  const [selectedTags, setSelectedTags] = useState<number[]>([]); 
+  const [selectedServices, setSelectedServices] = useState<string[]>(serviceSlug ? [serviceSlug] : []);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [sortBy, setSortBy] = useState<'default' | 'price_asc' | 'price_desc' | 'distance'>('default');
+  const [sortBy, setSortBy] = useState<SortBy>('default');
   const [sortModalVisible, setSortModalVisible] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
-      if (isNaN(categoryId)) return;
-      fetchTags();
-      requestLocation();
-  }, [categoryId]);
-
-  useEffect(() => { 
-      if (!isNaN(categoryId)) fetchItems(); 
-  }, [categoryId, selectedTags, sortBy]);
-
-  async function fetchTags() {
-      if (type !== 'specialist') return;
-      const { data } = await supabase.from('subcategories').select('*').eq('category_id', categoryId);
-      if (data) setSubcategories(data);
-  }
-
-  async function requestLocation() {
+    if (providerType !== 'venue') return;
+    let active = true;
+    void (async () => {
       try {
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status !== 'granted') return;
-          const loc = await Location.getCurrentPositionAsync({});
-          setUserLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-      } catch {}
-  }
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const location = await Location.getCurrentPositionAsync({});
+        if (active) setUserLocation({ lat: location.coords.latitude, lng: location.coords.longitude });
+      } catch {
+        // Distance sorting stays unavailable when location cannot be resolved.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [providerType]);
 
-  function getDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-      const R = 6371;
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLng = (lng2 - lng1) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2) * Math.sin(dLng/2);
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  }
+  const { data: services = [] } = useQuery({
+    queryKey: ['category-services', providerType, categorySlug],
+    enabled: Boolean(categorySlug),
+    queryFn: async (): Promise<ServiceFilter[]> => {
+      const { data, error } = await supabase
+        .from('services')
+        .select('slug, name, service_categories!inner(slug, provider_type)')
+        .eq('service_categories.slug', categorySlug)
+        .eq('service_categories.provider_type', providerType)
+        .eq('is_active', true)
+        .order('sort_order');
+      if (error) throw error;
+      return (data || []).map((item: { slug: string; name: string }) => ({ slug: item.slug, name: item.name }));
+    },
+  });
 
-  async function fetchItems() {
-    setLoading(true);
-    try {
-        if (type === 'specialist') {
+  const {
+    data: items = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ['provider-search', providerType, categorySlug, selectedServices, sortBy, userLocation],
+    enabled: Boolean(categorySlug),
+    queryFn: async () => {
+      const serviceFilters: (string | null)[] = selectedServices.length ? selectedServices : [null];
+      const responses = await Promise.all(serviceFilters.map((selectedService) => supabase.rpc('search_providers', {
+        p_provider_type: providerType,
+        p_category_slug: categorySlug,
+        p_service_slug: selectedService,
+        p_city: null,
+        p_max_price: null,
+        p_sort: sortBy === 'distance' ? 'distance' : sortBy === 'price_asc' ? 'price' : 'rating',
+        p_latitude: providerType === 'venue' ? userLocation?.lat ?? null : null,
+        p_longitude: providerType === 'venue' ? userLocation?.lng ?? null : null,
+      })));
+      const failed = responses.find((response) => response.error);
+      if (failed?.error) throw failed.error;
+      const data = responses.flatMap((response) => response.data || []);
 
-            // 1. Фильтр по тегам (если есть)
-            let validSpecialistIds: string[] | null = null;
-            if (selectedTags.length > 0) {
-                const { data: tagMatches } = await supabase
-                    .from('specialist_subcategories')
-                    .select('specialist_id')
-                    .in('subcategory_id', selectedTags);
-                
-                if (tagMatches) validSpecialistIds = [...new Set(tagMatches.map(t => t.specialist_id))];
-            }
+      const unique = new Map<string, SearchRow & { distance_km: number | null; role: ProviderType; price_start: number }>();
+      for (const raw of data as SearchRow[]) {
+        const current = unique.get(raw.id);
+        const row = {
+          ...raw,
+          role: providerType,
+          price_start: raw.price_from,
+        };
+        if (!current || row.price_from < current.price_from) unique.set(raw.id, row);
+      }
 
-            // 2. Основной запрос
-            let query = supabase
-                .from('specialist_profiles')
-                .select(`*, profiles!inner(*), categories(name)`)
-                .eq('category_id', categoryId); // <--- ВОТ ГЛАВНЫЙ ФИЛЬТР
+      const result = [...unique.values()];
+      if (sortBy === 'price_asc') result.sort((a, b) => a.price_from - b.price_from);
+      if (sortBy === 'price_desc') result.sort((a, b) => b.price_from - a.price_from);
+      if (sortBy === 'distance') {
+        result.sort((a, b) => (a.distance_km ?? Number.POSITIVE_INFINITY) - (b.distance_km ?? Number.POSITIVE_INFINITY));
+      }
+      return result;
+    },
+  });
 
-            // Если он не работает, значит у юзера в базе не тот ID, или ID категории приходит неверный
-
-            if (validSpecialistIds !== null) {
-                if (validSpecialistIds.length === 0) {
-                    setItems([]); setLoading(false); return;
-                }
-                query = query.in('id', validSpecialistIds);
-            }
-
-            if (sortBy === 'price_asc') query = query.order('price_start', { ascending: true });
-            if (sortBy === 'price_desc') query = query.order('price_start', { ascending: false });
-
-            const { data, error } = await query;
-            
-            if (error) throw error;
-
-            // Получаем реальные рейтинги для специалистов
-            const specialistIds = data.map((item: any) => item.id);
-            let ratingMap: Record<string, number> = {};
-            if (specialistIds.length > 0) {
-                const { data: reviews } = await supabase
-                    .from('reviews')
-                    .select('target_id, rating')
-                    .in('target_id', specialistIds);
-                if (reviews) {
-                    const grouped = reviews.reduce((acc: any, r: any) => {
-                        if (!acc[r.target_id]) acc[r.target_id] = [];
-                        acc[r.target_id].push(r.rating);
-                        return acc;
-                    }, {});
-                    for (const [id, ratings] of Object.entries(grouped)) {
-                        const arr = ratings as number[];
-                        ratingMap[id] = arr.reduce((a: number, b: number) => a + b, 0) / arr.length;
-                    }
-                }
-            }
-
-            const formatted = data.map((item: any) => ({
-                id: item.id,
-                full_name: item.profiles.full_name,
-                avatar_url: item.profiles.avatar_url,
-                city: item.profiles.city,
-                experience_years: item.experience_years,
-                price_start: item.price_start,
-                avg_rating: ratingMap[item.id] || 0,
-                category_name: item.categories?.name
-            }));
-
-            setItems(formatted);
-
-        } else {
-            // Для заведений
-            let query = supabase
-                .from('venue_profiles')
-                .select('*, profiles(*), categories(name)')
-                .eq('category_id', categoryId);
-            
-            if (sortBy === 'price_asc') query = query.order('price_from', { ascending: true });
-            if (sortBy === 'price_desc') query = query.order('price_from', { ascending: false });
-
-            const { data } = await query;
-
-            // Получаем рейтинги для заведений
-            const venueIds = data?.map((v: any) => v.id) || [];
-            let ratingMap: Record<string, number> = {};
-            if (venueIds.length > 0) {
-                const { data: reviews } = await supabase
-                    .from('reviews')
-                    .select('target_id, rating')
-                    .in('target_id', venueIds);
-                if (reviews) {
-                    const grouped = reviews.reduce((acc: any, r: any) => {
-                        if (!acc[r.target_id]) acc[r.target_id] = [];
-                        acc[r.target_id].push(r.rating);
-                        return acc;
-                    }, {});
-                    for (const [id, ratings] of Object.entries(grouped)) {
-                        const arr = ratings as number[];
-                        ratingMap[id] = arr.reduce((a: number, b: number) => a + b, 0) / arr.length;
-                    }
-                }
-            }
-
-            const formatted = data?.map((item: any) => ({
-                id: item.id,
-                full_name: item.profiles.full_name,
-                avatar_url: item.profiles.avatar_url,
-                city: item.profiles.city,
-                price_from: item.price_from,
-                capacity: item.capacity,
-                distance_to_beach_m: item.distance_to_beach_m,
-                location_zone: item.location_zone,
-                category_name: item.categories?.name,
-                avg_rating: ratingMap[item.id] || 0,
-                distance_km: item.latitude && item.longitude && userLocation
-                    ? getDistance(userLocation.lat, userLocation.lng, item.latitude, item.longitude)
-                    : null,
-            })) || [];
-
-            // Сортировка по расстоянию
-            if (sortBy === 'distance' && userLocation) {
-                formatted.sort((a: any, b: any) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity));
-            }
-
-            setItems(formatted);
-        }
-    } catch (e) {
-        // fetch error
-    } finally {
-        setLoading(false);
-    }
-  }
-
-  const toggleTag = (tagId: number) => {
-      if (selectedTags.includes(tagId)) setSelectedTags(prev => prev.filter(t => t !== tagId));
-      else setSelectedTags(prev => [...prev, tagId]);
+  const toggleService = (slug: string) => {
+    setSelectedServices((current) =>
+      current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug],
+    );
   };
+
+  const sortOptions: { label: string; value: SortBy }[] = [
+    { label: 'По умолчанию', value: 'default' },
+    { label: 'Сначала дешёвые', value: 'price_asc' },
+    { label: 'Сначала дорогие', value: 'price_desc' },
+    ...(userLocation && providerType === 'venue' ? [{ label: 'По расстоянию', value: 'distance' as const }] : []),
+  ];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <AppHeader title={name as string} />
-      
-      {/* ПАНЕЛЬ УПРАВЛЕНИЯ */}
+      <AppHeader title={name} />
       <View style={styles.topBar}>
-          <TouchableOpacity 
-            style={[styles.controlBtn, selectedTags.length > 0 && styles.activeBtn]} 
-            onPress={() => setFilterModalVisible(true)}
-          >
-              <Icon name="filter" type="feather" size={16} color={selectedTags.length > 0 ? '#000' : '#fff'} />
-              <Text style={[styles.btnText, selectedTags.length > 0 && { color: '#000' }]}>
-                  {selectedTags.length > 0 ? `Навыки (${selectedTags.length})` : 'Навыки'}
-              </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.controlBtn} 
-            onPress={() => setSortModalVisible(true)}
-          >
-              <Icon name="align-left" type="feather" size={16} color="#fff" />
-              <Text style={styles.btnText}>
-                  {sortBy === 'default' ? 'Сортировка' : 'Сортировка'}
-              </Text>
-          </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.controlBtn, selectedServices.length > 0 && styles.activeBtn]}
+          onPress={() => setFilterModalVisible(true)}
+        >
+          <Icon name="filter" type="feather" size={16} color={selectedServices.length > 0 ? '#000' : '#fff'} />
+          <Text style={[styles.btnText, selectedServices.length > 0 && { color: '#000' }]}>
+            {selectedServices.length > 0 ? `Услуги (${selectedServices.length})` : 'Услуги'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.controlBtn} onPress={() => setSortModalVisible(true)}>
+          <Icon name="align-left" type="feather" size={16} color="#fff" />
+          <Text style={styles.btnText}>Сортировка</Text>
+        </TouchableOpacity>
       </View>
-      
-      {loading ? (
+
+      {isLoading ? (
         <ActivityIndicator style={{ marginTop: 50 }} color={theme.colors.primary} size="large" />
       ) : (
         <FlatList
-            data={items}
-            keyExtractor={item => item.id.toString()}
-            renderItem={({ item }) => <ProfileCard item={item} type={type as any} />}
-            contentContainerStyle={{ padding: 20, paddingBottom: 50 }}
-            ListEmptyComponent={
-                <View style={styles.emptyState}>
-                     <Icon name="search" type="feather" size={60} color="#2B3139" />
-            <Text style={{ color: theme.colors.grey2, marginTop: 15, fontWeight: '600' }}>
-                {items.length === 0 ? 'Никого нет' : 'Ничего не найдено'}
-            </Text>
-                </View>
-            }
+          data={items}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <ProfileCard item={item} type={providerType} />}
+          contentContainerStyle={{ padding: 20, paddingBottom: 50, flexGrow: 1 }}
+          refreshing={isLoading}
+          onRefresh={refetch}
+          ListEmptyComponent={
+            <TouchableOpacity style={styles.emptyState} onPress={() => isError && refetch()}>
+              <Icon name={isError ? 'alert-circle' : 'search'} type="feather" size={60} color="#2B3139" />
+              <Text style={{ color: theme.colors.grey2, marginTop: 15, fontWeight: '600', textAlign: 'center' }}>
+                {isError ? 'Не удалось загрузить результаты. Нажмите, чтобы повторить.' : 'Никого не найдено'}
+              </Text>
+            </TouchableOpacity>
+          }
         />
       )}
 
-      {/* МОДАЛКА ФИЛЬТРОВ */}
       <Modal visible={filterModalVisible} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
-              <View style={[styles.modalContent, { backgroundColor: '#1E2329', paddingBottom: insets.bottom + 20 }]}>
-                  <View style={styles.modalHeader}>
-                      <Text style={styles.modalTitle}>Выберите навыки</Text>
-                      <TouchableOpacity onPress={() => setFilterModalVisible(false)}><Icon name="x" type="feather" color="#A09BAF" /></TouchableOpacity>
-                  </View>
-                  <ScrollView style={{ maxHeight: 400 }}>
-                      <View style={styles.tagsGrid}>
-                          {subcategories.map((sub) => {
-                              const isActive = selectedTags.includes(sub.id);
-                              return (
-                                  <TouchableOpacity key={sub.id} style={[styles.tagChip, isActive && styles.activeTagChip]} onPress={() => toggleTag(sub.id)}>
-                                      <Text style={[styles.tagText, isActive && { color: '#000' }]}>{sub.name}</Text>
-                                  </TouchableOpacity>
-                              )
-                          })}
-                      </View>
-                  </ScrollView>
-                  <TouchableOpacity style={styles.applyBtn} onPress={() => setFilterModalVisible(false)}>
-                      <Text style={{ color: '#000', fontWeight: 'bold' }}>Применить</Text>
-                  </TouchableOpacity>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Выберите услуги</Text>
+              <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+                <Icon name="x" type="feather" color="#A09BAF" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 400 }}>
+              <View style={styles.tagsGrid}>
+                {services.map((service) => {
+                  const isActive = selectedServices.includes(service.slug);
+                  return (
+                    <TouchableOpacity
+                      key={service.slug}
+                      style={[styles.tagChip, isActive && styles.activeTagChip]}
+                      onPress={() => toggleService(service.slug)}
+                    >
+                      <Text style={[styles.tagText, isActive && { color: '#000' }]}>{service.name}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
+            </ScrollView>
+            <TouchableOpacity style={styles.applyBtn} onPress={() => setFilterModalVisible(false)}>
+              <Text style={{ color: '#000', fontWeight: 'bold' }}>Применить</Text>
+            </TouchableOpacity>
           </View>
+        </View>
       </Modal>
 
-      {/* МОДАЛКА СОРТИРОВКИ */}
       <Modal visible={sortModalVisible} transparent animationType="fade">
-          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSortModalVisible(false)}>
-              <View style={[styles.modalContent, { backgroundColor: '#1E2329', paddingBottom: insets.bottom + 20 }]}>
-                  <Text style={styles.modalTitle}>Сортировка</Text>
-                   {[
-                       { label: 'По умолчанию', value: 'default' },
-                       { label: 'Сначала дешевые', value: 'price_asc' },
-                       { label: 'Сначала дорогие', value: 'price_desc' },
-                       ...(userLocation && type === 'venue' ? [{ label: 'По расстоянию', value: 'distance' }] : []),
-                   ].map((opt) => (
-                      <TouchableOpacity key={opt.value} style={styles.sortItem} onPress={() => { setSortBy(opt.value as any); setSortModalVisible(false); }}>
-                          <Text style={{ fontSize: 16, color: sortBy === opt.value ? '#F0B90B' : '#fff' }}>{opt.label}</Text>
-                          {sortBy === opt.value && <Icon name="check" type="feather" color="#F0B90B" />}
-                      </TouchableOpacity>
-                  ))}
-              </View>
-          </TouchableOpacity>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSortModalVisible(false)}>
+          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
+            <Text style={styles.modalTitle}>Сортировка</Text>
+            {sortOptions.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={styles.sortItem}
+                onPress={() => {
+                  setSortBy(option.value);
+                  setSortModalVisible(false);
+                }}
+              >
+                <Text style={{ fontSize: 16, color: sortBy === option.value ? '#F0B90B' : '#fff' }}>
+                  {option.label}
+                </Text>
+                {sortBy === option.value && <Icon name="check" type="feather" color="#F0B90B" />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -302,9 +245,9 @@ const styles = StyleSheet.create({
   controlBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, backgroundColor: '#1E2329', borderWidth: 1, borderColor: '#2B3139', gap: 8 },
   activeBtn: { backgroundColor: '#F0B90B', borderColor: '#F0B90B' },
   btnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
-  emptyState: { alignItems: 'center', marginTop: 50 },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
-  modalContent: { borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 25 },
+  modalContent: { backgroundColor: '#1E2329', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 25 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
   tagsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -312,5 +255,5 @@ const styles = StyleSheet.create({
   activeTagChip: { backgroundColor: '#F0B90B', borderColor: '#F0B90B' },
   tagText: { color: '#A09BAF', fontWeight: '600' },
   applyBtn: { backgroundColor: '#F0B90B', paddingVertical: 15, borderRadius: 12, alignItems: 'center', marginTop: 20 },
-  sortItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#2B3139' }
+  sortItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#2B3139' },
 });

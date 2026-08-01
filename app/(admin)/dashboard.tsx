@@ -9,15 +9,15 @@ import { useAuth } from '../../providers/AuthProvider';
 
 export default function AdminDashboard() {
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { isAdmin } = useAuth();
   
   const [users, setUsers] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(useCallback(() => { fetchUsers(); }, []));
 
-  const isAdmin = user?.user_metadata?.role === 'admin' || user?.user_metadata?.is_admin === true;
   if (!isAdmin) {
       return (
         <View style={styles.center}>
@@ -38,14 +38,54 @@ export default function AdminDashboard() {
 
     if (error) Alert.alert('Ошибка', error.message);
     else setUsers(data || []);
+    const { data: reportData, error: reportError } = await supabase
+      .from('reports')
+      .select('id, target_type, target_id, reason, status, created_at')
+      .eq('status', 'open')
+      .order('created_at', { ascending: true });
+    if (reportError) Alert.alert('Ошибка модерации', reportError.message);
+    else setReports(reportData || []);
     setLoading(false);
     setRefreshing(false);
   }
 
   async function toggleBan(userId: string, currentStatus: boolean) {
-    const { error } = await supabase.from('profiles').update({ is_banned: !currentStatus }).eq('id', userId);
+    const { error } = await supabase.rpc('admin_set_user_banned', { p_user_id: userId, p_banned: !currentStatus });
     if (!error) setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: !currentStatus } : u));
   }
+
+  async function moderateReport(reportId: string, action: 'hide' | 'dismiss') {
+    const { error } = await supabase.rpc('moderate_report', {
+      p_report_id: reportId,
+      p_action: action,
+      p_note: action === 'hide' ? 'Скрыто администратором' : 'Жалоба отклонена администратором',
+    });
+    if (error) Alert.alert('Ошибка модерации', error.message);
+    else setReports((current) => current.filter((report) => report.id !== reportId));
+  }
+
+  const moderationQueue = (
+    <View style={styles.moderationSection}>
+      <Text style={styles.moderationTitle}>Модерация ({reports.length})</Text>
+      {reports.length === 0 ? (
+        <Text style={styles.emptyQueue}>Открытых жалоб нет</Text>
+      ) : reports.map((report) => (
+        <View key={report.id} style={styles.reportCard}>
+          <Text style={styles.reportType}>{report.target_type} · {String(report.target_id).slice(0, 8)}</Text>
+          <Text style={styles.reportReason}>{report.reason}</Text>
+          <View style={styles.reportActions}>
+            <TouchableOpacity style={[styles.reportButton, styles.dismissButton]} onPress={() => moderateReport(report.id, 'dismiss')}>
+              <Text style={styles.reportButtonText}>Отклонить</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.reportButton, styles.hideButton]} onPress={() => moderateReport(report.id, 'hide')}>
+              <Text style={styles.reportButtonText}>Скрыть</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ))}
+      <Text style={styles.usersTitle}>Пользователи</Text>
+    </View>
+  );
 
   const renderUser = ({ item }: { item: any }) => (
     <View style={[styles.userCard, { backgroundColor: theme.colors.grey0, opacity: item.is_banned ? 0.6 : 1 }]}>
@@ -93,6 +133,7 @@ export default function AdminDashboard() {
           data={users}
           keyExtractor={item => item.id}
           renderItem={renderUser}
+          ListHeaderComponent={moderationQueue}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchUsers(); }} tintColor={theme.colors.primary} />}
           contentContainerStyle={{ padding: 20 }}
         />
@@ -110,5 +151,17 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 24, fontWeight: '900', marginTop: 5 },
   
   userCard: { flexDirection: 'row', alignItems: 'center', padding: 15, borderRadius: 18, marginBottom: 10 },
-  banBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' }
+  banBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  moderationSection: { marginBottom: 18 },
+  moderationTitle: { color: '#FAFAFA', fontSize: 18, fontWeight: '800', marginBottom: 10 },
+  emptyQueue: { color: '#848E9C', paddingVertical: 12 },
+  reportCard: { backgroundColor: '#1E2329', borderColor: '#2B3139', borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 10 },
+  reportType: { color: '#F0B90B', fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
+  reportReason: { color: '#FAFAFA', fontSize: 14, marginTop: 7 },
+  reportActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  reportButton: { flex: 1, alignItems: 'center', padding: 10, borderRadius: 9 },
+  dismissButton: { backgroundColor: '#2B3139' },
+  hideButton: { backgroundColor: '#F6465D' },
+  reportButtonText: { color: '#FAFAFA', fontWeight: '700' },
+  usersTitle: { color: '#FAFAFA', fontSize: 18, fontWeight: '800', marginTop: 16 },
 });

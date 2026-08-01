@@ -13,7 +13,7 @@ const ZONES = [
   { label: 'Ушарал', value: 'usharal' },
 ] as const;
 
-const ALAKOL_VENUE_CATEGORIES = ['Зоны отдыха', 'Пансионаты', 'Гостевые дома', 'Коттеджи'];
+const ALAKOL_VENUE_CATEGORIES = ['Зоны и базы отдыха', 'Глэмпинги', 'Отели и хостелы', 'Санатории', 'Детские лагеря'];
 
 export default function AlakolHubScreen() {
   const { theme } = useTheme();
@@ -28,35 +28,22 @@ export default function AlakolHubScreen() {
     try {
       if (mode === 'stay') {
         const { data } = await supabase
-          .from('venue_profiles')
-          .select('*, profiles(*), categories(name)')
+          .from('provider_search_view')
+          .select('*')
+          .eq('provider_type', 'venue')
           .eq('location_zone', zone)
-          .in('categories.name', ALAKOL_VENUE_CATEGORIES);
+          .limit(ALAKOL_VENUE_CATEGORIES.length * 20);
 
-        setItems((data || []).map((item: any) => ({
-          ...item,
-          full_name: item.profiles?.full_name,
-          avatar_url: item.profiles?.avatar_url,
-          city: item.profiles?.city,
-          category_name: item.categories?.name,
-        })));
+        setItems(Array.from(new Map((data || []).map((item: any) => [item.id, item])).values()));
       } else {
         const { data } = await supabase
-          .from('specialist_profiles')
-          .select('*, profiles!inner(*), categories(name)')
-          .eq('profiles.works_in_alakol', true)
-          .eq('profiles.alakol_zone', zone);
+          .from('provider_search_view')
+          .select('*')
+          .eq('provider_type', 'specialist')
+          .eq('service_area', zone)
+          .limit(100);
 
-        setItems((data || []).map((item: any) => ({
-          ...item,
-          full_name: item.profiles?.full_name,
-          avatar_url: item.profiles?.avatar_url,
-          city: item.profiles?.city,
-          works_in_alakol: item.profiles?.works_in_alakol,
-          alakol_zone: item.profiles?.alakol_zone,
-          category_name: item.categories?.name,
-          avg_rating: 0,
-        })));
+        setItems(Array.from(new Map((data || []).map((item: any) => [item.id, item])).values()));
       }
     } finally {
       setLoading(false);

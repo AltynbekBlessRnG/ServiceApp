@@ -15,17 +15,11 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchNotifications();
-    }, [])
-  );
-
-  async function fetchNotifications() {
+  const fetchNotifications = useCallback(async () => {
     if (!user) return;
     
     // Грузим уведомления
-    const { data, error } = await supabase
+    const { data } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
@@ -42,7 +36,13 @@ export default function NotificationsScreen() {
     }
     setLoading(false);
     setRefreshing(false);
-  }
+  }, [user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchNotifications();
+    }, [fetchNotifications])
+  );
 
   // Хелпер для иконок (чтобы было красиво)
   const getIconInfo = (title: string) => {

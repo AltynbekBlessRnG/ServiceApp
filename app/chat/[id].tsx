@@ -26,53 +26,61 @@ export default function PersonalChatScreen() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [receiver, setReceiver] = useState<any>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user || !receiverId) return;
+    let active = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    void (async () => {
+      const [{ data: profile }, { data: directId, error: conversationError }] = await Promise.all([
+        supabase.from('profiles').select('id, full_name, avatar_url').eq('id', receiverId).single(),
+        supabase.rpc('get_or_create_direct_conversation', { p_partner_id: receiverId }),
+      ]);
+      if (!active) return;
+      if (profile) setReceiver(profile);
+      if (conversationError || !directId) {
+        setLoading(false);
+        return;
+      }
+      setConversationId(directId);
+      const { data } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', directId)
+        .eq('is_hidden', false)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (!active) return;
+      setMessages(data || []);
+      await supabase.rpc('mark_conversation_read', { p_conversation_id: directId });
+      setLoading(false);
+      channel = supabase
+        .channel(`conversation:${directId}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${directId}`,
+        }, (payload) => {
+          const message = payload.new;
+          setMessages((current) =>
+            current.some((item) => item.id === message.id) ? current : [message, ...current],
+          );
+          void supabase.rpc('mark_conversation_read', { p_conversation_id: directId });
+        })
+        .subscribe();
+    })();
 
-    fetchReceiverProfile();
-    fetchMessages();
-
-    const channelId = [user.id, receiverId].sort().join('_');
-    const channel = supabase.channel(`chat:${channelId}`)
-      .on('postgres_changes', { 
-          event: 'INSERT', schema: 'public', table: 'messages',
-      }, (payload) => {
-          const msg = payload.new;
-          const isRelevant = 
-            (msg.sender_id === user.id && msg.receiver_id === receiverId) ||
-            (msg.sender_id === receiverId && msg.receiver_id === user.id);
-          if (isRelevant) {
-             setMessages((prev) => {
-               if (prev.some(m => m.id === msg.id)) return prev;
-               return [msg, ...prev];
-             }); 
-          }
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      active = false;
+      if (channel) void supabase.removeChannel(channel);
+    };
   }, [receiverId, user]);
 
-  async function fetchReceiverProfile() {
-    const { data } = await supabase.from('profiles').select('*').eq('id', receiverId).single();
-    if (data) setReceiver(data);
-  }
-
-  async function fetchMessages() {
-    const { data } = await supabase
-      .from('messages')
-      .select('*')
-      .or(`and(sender_id.eq.${user?.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user?.id})`)
-      .order('created_at', { ascending: false });
-      
-    if (data) setMessages(data);
-    setLoading(false);
-  }
-
   async function sendMessage() {
-    if (!newMessage.trim() || !user) return;
+    if (!newMessage.trim() || !user || !conversationId) return;
     const msgText = newMessage.trim();
     setNewMessage(''); 
 
@@ -81,16 +89,19 @@ export default function PersonalChatScreen() {
         id: Date.now().toString(),
         content: msgText,
         sender_id: user.id,
+        conversation_id: conversationId,
         created_at: new Date().toISOString(),
-        is_read: false
     };
     setMessages(prev => [optimisticMsg, ...prev]);
 
     const { error } = await supabase
         .from('messages')
-        .insert({ sender_id: user.id, receiver_id: receiverId, content: msgText });
+        .insert({ sender_id: user.id, conversation_id: conversationId, content: msgText });
 
-    if (error) console.error(error);
+    if (error) {
+      setMessages((current) => current.filter((message) => message.id !== optimisticMsg.id));
+      setNewMessage(msgText);
+    }
   }
 
   const renderMessage = ({ item }: { item: any }) => {

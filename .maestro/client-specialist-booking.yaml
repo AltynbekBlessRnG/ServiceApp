@@ -1,0 +1,18 @@
+appId: com.adiya.serviceapp
+env:
+  CLIENT_EMAIL: ${CLIENT_EMAIL}
+  CLIENT_PASSWORD: ${CLIENT_PASSWORD}
+---
+- runFlow: login-client.yaml
+- tapOn: "Красота и здоровье"
+- tapOn:
+    index: 0
+- tapOn:
+    index: 0
+- tapOn: "Записаться"
+- tapOn:
+    text: ".*"
+    index: 0
+- tapOn: "10:00"
+- tapOn: "Подтвердить"
+- assertVisible: "Заявка отправлена"

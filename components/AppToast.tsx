@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Icon } from '@rneui/themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,6 +41,13 @@ export function ToastProvider() {
   const translateY = useRef(new Animated.Value(-80)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const dismiss = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: -80, duration: 200, useNativeDriver: true }),
+    ]).start(() => setToast((prev) => ({ ...prev, visible: false })));
+  }, [opacity, translateY]);
+
   useEffect(() => {
     globalShowToast = (opts: ToastOptions) => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -58,14 +65,7 @@ export function ToastProvider() {
       }
     };
     return () => { globalShowToast = null; };
-  }, []);
-
-  const dismiss = () => {
-    Animated.parallel([
-      Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: -80, duration: 200, useNativeDriver: true }),
-    ]).start(() => setToast((prev) => ({ ...prev, visible: false })));
-  };
+  }, [dismiss, opacity, translateY]);
 
   if (!toast.visible) return null;
 
@@ -130,7 +130,7 @@ export function AlertAsync({
     } else {
       Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: true }).start();
     }
-  }, [visible]);
+  }, [opacity, visible]);
 
   if (!visible) return null;
 

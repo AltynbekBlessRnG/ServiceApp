@@ -1,4 +1,5 @@
-import { Button, Icon, Input, Text, useTheme } from '@rneui/themed';
+import { Button, CheckBox, Icon, Input, Text, useTheme } from '@rneui/themed';
+import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -14,6 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
+import { openLegalDocument } from '../../lib/legal';
 
 const KZ_CITIES = [
   'Алматы',
@@ -49,6 +51,7 @@ export default function RegisterScreen() {
   const [city, setCity] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
 
   async function signUpWithEmail() {
     if (!fullName.trim()) {
@@ -58,6 +61,12 @@ export default function RegisterScreen() {
     if (!city) {
       return Alert.alert('Ошибка', 'Пожалуйста, выберите ваш город');
     }
+    if (!email.trim() || password.length < 8) {
+      return Alert.alert('Ошибка', 'Введите email и пароль не короче 8 символов');
+    }
+    if (!acceptedLegal) {
+      return Alert.alert('Нужно согласие', 'Примите условия использования и политику конфиденциальности');
+    }
 
     setLoading(true);
 
@@ -65,6 +74,7 @@ export default function RegisterScreen() {
       email,
       password,
       options: {
+        emailRedirectTo: Linking.createURL('auth/callback'),
         data: {
           full_name: fullName.trim(),
           city,
@@ -82,19 +92,8 @@ export default function RegisterScreen() {
       router.replace('/(auth)/role-select');
       return;
     }
-
-    try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-
-      if (signInError) {
-        Alert.alert('Аккаунт создан', 'Теперь войдите в приложение.');
-        router.replace('/(auth)/login');
-      } else {
-        router.replace('/(auth)/role-select');
-      }
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
+    router.replace({ pathname: '/verify-email', params: { email: email.trim() } });
   }
 
   return (
@@ -163,9 +162,25 @@ export default function RegisterScreen() {
             leftIcon={<Icon name="lock" type="feather" size={18} color={theme.colors.grey3} />}
           />
 
+          <CheckBox
+            checked={acceptedLegal}
+            onPress={() => setAcceptedLegal((value) => !value)}
+            title={
+              <Text style={{ color: theme.colors.grey2, lineHeight: 20 }}>
+                Я принимаю{' '}
+                <Text style={{ color: theme.colors.primary }} onPress={() => void openLegalDocument('terms').catch((error) => Alert.alert('Документ недоступен', error.message))}>условия использования</Text>
+                {' '}и{' '}
+                <Text style={{ color: theme.colors.primary }} onPress={() => void openLegalDocument('privacy').catch((error) => Alert.alert('Документ недоступен', error.message))}>политику конфиденциальности</Text>
+              </Text>
+            }
+            containerStyle={{ backgroundColor: 'transparent', borderWidth: 0, marginHorizontal: 0 }}
+            checkedColor={theme.colors.primary}
+          />
+
           <Button
             title="Зарегистрироваться"
             loading={loading}
+            disabled={!acceptedLegal}
             onPress={signUpWithEmail}
             buttonStyle={{ backgroundColor: theme.colors.primary, borderRadius: 16, height: 55, marginTop: 10 }}
             titleStyle={{ fontWeight: '800' }}

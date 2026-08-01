@@ -14,7 +14,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
-import { sendPushNotification } from '../../lib/push';
 import { showToast } from '../../components/AppToast';
 import { useAuth } from '../../providers/AuthProvider';
 
@@ -42,29 +41,34 @@ export default function SpecialistHome() {
     }, [])
   );
 
-  useFocusEffect(useCallback(() => { fetchBookings(); }, []));
-
-  async function fetchBookings() {
+  const fetchBookings = useCallback(async () => {
     if (!user) return;
     
     const { data } = await supabase
       .from('bookings')
-      .select(`*, client:profiles!client_id (full_name, avatar_url, phone)`)
-      .eq('specialist_id', user.id)
+      .select(`*, client:profiles!client_id (full_name, avatar_url)`)
+      .eq('provider_id', user.id)
       .order('created_at', { ascending: false });
 
     if (data) setBookings(data);
     setLoading(false);
     setRefreshing(false);
-  }
+  }, [user]);
+
+  useFocusEffect(useCallback(() => { void fetchBookings(); }, [fetchBookings]));
 
   // 2. ОБНОВЛЕНИЕ СТАТУСА + УВЕДОМЛЕНИЕ
-  async function updateStatus(id: string, status: string, clientId: string) {
+  async function updateStatus(id: string, status: 'confirmed' | 'rejected' | 'completed') {
     // Оптимистичное обновление UI
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
     
     // Обновляем базу
-    await supabase.from('bookings').update({ status }).eq('id', id);
+    const { error } = await supabase.rpc('transition_booking', { p_booking_id: id, p_status: status });
+    if (error) {
+      await fetchBookings();
+      showToast({ type: 'error', title: 'Не удалось изменить статус', message: error.message });
+      return;
+    }
 
     // Готовим текст уведомления
     let title = '';
@@ -81,16 +85,16 @@ export default function SpecialistHome() {
         body = 'Спасибо, что выбрали нас! Не забудьте оставить отзыв.';
     }
 
-    // Отправляем уведомление (если есть текст и ID клиента)
-    if (title && clientId) {
-        await sendPushNotification(clientId, title, body);
+    if (title) {
         showToast({ type: status === 'confirmed' ? 'success' : status === 'rejected' ? 'error' : 'info', title, message: body });
     }
   }
 
   const renderItem = ({ item }: { item: any }) => {
     const isPending = item.status === 'pending';
-    const [date, time] = item.date_time.split(' ');
+    const startsAt = new Date(item.starts_at);
+    const date = startsAt.toLocaleDateString('ru-RU');
+    const time = startsAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
     const statusLabel = item.status === 'pending' ? 'ОЖИДАЕТ' : item.status === 'confirmed' ? 'ПОДТВЕРЖДЕНО' : item.status === 'completed' ? 'ЗАВЕРШЕНО' : 'ОТКЛОНЕНО';
 
@@ -137,15 +141,15 @@ export default function SpecialistHome() {
         <View style={styles.actionRow}>
             {isPending ? (
                 <>
-                    <TouchableOpacity style={[styles.btn, { backgroundColor: '#EF444420', flex: 1, marginRight: 10 }]} onPress={() => updateStatus(item.id, 'rejected', item.client_id)}>
+                    <TouchableOpacity style={[styles.btn, { backgroundColor: '#EF444420', flex: 1, marginRight: 10 }]} onPress={() => updateStatus(item.id, 'rejected')}>
                         <Text style={{ color: '#EF4444', fontWeight: '800' }}>ОТКЛОНИТЬ</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.btn, { backgroundColor: '#10B981', flex: 1 }]} onPress={() => updateStatus(item.id, 'confirmed', item.client_id)}>
+                    <TouchableOpacity style={[styles.btn, { backgroundColor: '#10B981', flex: 1 }]} onPress={() => updateStatus(item.id, 'confirmed')}>
                         <Text style={{ color: '#fff', fontWeight: '800' }}>ПРИНЯТЬ</Text>
                     </TouchableOpacity>
                 </>
             ) : item.status === 'confirmed' && (
-                <TouchableOpacity style={[styles.btn, { backgroundColor: '#10B981', flex: 1 }]} onPress={() => updateStatus(item.id, 'completed', item.client_id)}>
+                <TouchableOpacity style={[styles.btn, { backgroundColor: '#10B981', flex: 1 }]} onPress={() => updateStatus(item.id, 'completed')}>
                     <Icon name="check" type="feather" color="#fff" size={18} style={{marginRight: 8}} />
                     <Text style={{ color: '#fff', fontWeight: '800' }}>ЗАВЕРШИТЬ</Text>
                 </TouchableOpacity>

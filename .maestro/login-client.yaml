@@ -1,0 +1,14 @@
+appId: com.adiya.serviceapp
+---
+- launchApp:
+    clearState: true
+- tapOn: "Войти"
+- tapOn:
+    id: "email-input"
+- inputText: "${CLIENT_EMAIL}"
+- tapOn:
+    id: "password-input"
+- inputText: "${CLIENT_PASSWORD}"
+- tapOn:
+    text: "Войти"
+- assertVisible: "Главная"

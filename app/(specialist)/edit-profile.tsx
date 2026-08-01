@@ -1,7 +1,7 @@
 import { Button, CheckBox, Icon, Input, Text, useTheme } from '@rneui/themed';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
@@ -31,10 +31,6 @@ export default function EditProfileScreen() {
   const [alokolZone, setAlakolZone] = useState<'akshi' | 'koktuma' | 'usharal' | null>(null);
 
   useEffect(() => {
-    if (!authLoading && user) loadData();
-  }, [authLoading, user]);
-
-  useEffect(() => {
     if (selectedCategory) {
       fetchSubcategories(selectedCategory);
     } else {
@@ -42,9 +38,9 @@ export default function EditProfileScreen() {
     }
   }, [selectedCategory]);
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
-      const { data: catData } = await supabase.from('categories').select('id, name').eq('type', 'specialist').order('name');
+      const { data: catData } = await supabase.from('service_categories').select('id, name').eq('provider_type', 'specialist').order('sort_order');
       if (catData) setCategories(catData);
       if (!user) return;
 
@@ -53,27 +49,36 @@ export default function EditProfileScreen() {
         setBio(profile.bio || '');
         setExperience(profile.experience_years?.toString() || '');
         setPrice(profile.price_start?.toString() || '');
-        setSelectedCategory(profile.category_id);
+        setWorksInAlakol(Boolean(profile.service_area));
+        setAlakolZone(profile.service_area || null);
       }
 
-      const { data: tags } = await supabase.from('specialist_subcategories').select('subcategory_id').eq('specialist_id', user.id);
-      if (tags) setSelectedTags(tags.map((tag) => tag.subcategory_id));
+      const { data: tags } = await supabase
+        .from('provider_services')
+        .select('service_id, services(category_id)')
+        .eq('provider_id', user.id);
+      if (tags?.length) {
+        setSelectedTags(tags.map((tag) => tag.service_id));
+        setSelectedCategory((tags[0].services as { category_id?: number } | null)?.category_id ?? null);
+      }
 
-      const { data: mainProfile } = await supabase.from('profiles').select('avatar_url, works_in_alakol, alakol_zone').eq('id', user.id).single();
+      const { data: mainProfile } = await supabase.from('profiles').select('avatar_url').eq('id', user.id).single();
       if (mainProfile) {
         setAvatarUrl(mainProfile.avatar_url);
-        setWorksInAlakol(Boolean(mainProfile.works_in_alakol));
-        setAlakolZone(mainProfile.alakol_zone || null);
       }
-    } catch (error) {
+    } catch {
       // load error
     } finally {
       setFetching(false);
     }
-  }
+  }, [user]);
+
+  useEffect(() => {
+    if (!authLoading && user) void loadData();
+  }, [authLoading, loadData, user]);
 
   async function fetchSubcategories(categoryId: number) {
-    const { data } = await supabase.from('subcategories').select('*').eq('category_id', categoryId);
+    const { data } = await supabase.from('services').select('id, name').eq('category_id', categoryId).eq('is_active', true).order('sort_order');
     if (data) setSubcategories(data);
   }
 
@@ -94,21 +99,20 @@ export default function EditProfileScreen() {
         bio: bio.trim(),
         experience_years: parseInt(experience, 10) || 0,
         price_start: parseInt(price, 10) || 0,
-        category_id: selectedCategory,
+        service_area: worksInAlakol ? alokolZone : null,
       };
-
-      await supabase
-        .from('profiles')
-        .update({ role: 'specialist', works_in_alakol: worksInAlakol, alakol_zone: worksInAlakol ? alokolZone : null })
-        .eq('id', user.id);
 
       const { error } = await supabase.from('specialist_profiles').upsert(updates);
       if (error) throw error;
 
-      await supabase.from('specialist_subcategories').delete().eq('specialist_id', user.id);
+      await supabase.from('provider_services').delete().eq('provider_id', user.id);
       if (selectedTags.length > 0) {
-        const tagRows = selectedTags.map((tagId) => ({ specialist_id: user.id, subcategory_id: tagId }));
-        const { error: tagError } = await supabase.from('specialist_subcategories').insert(tagRows);
+        const tagRows = selectedTags.map((serviceId) => ({
+          provider_id: user.id,
+          service_id: serviceId,
+          price_from: parseInt(price, 10) || 0,
+        }));
+        const { error: tagError } = await supabase.from('provider_services').insert(tagRows);
         if (tagError) throw tagError;
       }
 

@@ -1,7 +1,7 @@
 import { Icon, Text, useTheme } from '@rneui/themed';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -31,19 +31,19 @@ export default function VenuePortfolioScreen() {
   const [uploading, setUploading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
-  useEffect(() => { fetchPortfolio(); }, []);
-
-  async function fetchPortfolio() {
+  const fetchPortfolio = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
-        .from('portfolio')
+        .from('portfolio_items')
         .select('*')
-        .eq('specialist_id', user.id)
+        .eq('owner_id', user.id)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
     if (data) setItems(data);
     setLoading(false);
-  }
+  }, [user]);
+
+  useEffect(() => { void fetchPortfolio(); }, [fetchPortfolio]);
 
   async function pickMedia() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -59,11 +59,11 @@ export default function VenuePortfolioScreen() {
     try {
       const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
       const timestamp = Date.now();
-      const fileName = `venues/${user?.id}/${timestamp}.${ext}`;
+      const fileName = `${user?.id}/${timestamp}.${ext}`;
       const publicUrl = await uploadFileToSupabase('portfolio', asset.uri, fileName);
 
-      const { error } = await supabase.from('portfolio').insert({
-          specialist_id: user?.id,
+      const { error } = await supabase.from('portfolio_items').insert({
+          owner_id: user?.id,
           file_url: publicUrl,
           thumbnail_url: publicUrl,
           file_type: 'image',
@@ -86,15 +86,15 @@ export default function VenuePortfolioScreen() {
       const tempItems = items.map(i => i.id === item.id ? updatedItem : i);
       tempItems.sort((a, b) => (Number(b.is_pinned) - Number(a.is_pinned)) || (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
       setItems(tempItems);
-      await supabase.from('portfolio').update({ is_pinned: newValue }).eq('id', item.id);
+      await supabase.from('portfolio_items').update({ is_pinned: newValue }).eq('id', item.id);
   }
 
   async function makeHero(item: any) {
       const newItems = items.map(i => ({ ...i, is_hero: i.id === item.id }));
       setItems(newItems);
       setSelectedItem({ ...item, is_hero: true });
-      await supabase.from('portfolio').update({ is_hero: false }).eq('specialist_id', user?.id);
-      await supabase.from('portfolio').update({ is_hero: true }).eq('id', item.id);
+      await supabase.from('portfolio_items').update({ is_hero: false }).eq('owner_id', user?.id);
+      await supabase.from('portfolio_items').update({ is_hero: true }).eq('id', item.id);
       Alert.alert("Обложка обновлена", "Это фото будет показано в карточке заведения.");
   }
 
@@ -102,7 +102,7 @@ export default function VenuePortfolioScreen() {
     Alert.alert("Удалить?", "Фото исчезнет навсегда.", [
         { text: "Отмена", style: "cancel" },
         { text: "Удалить", style: "destructive", onPress: async () => {
-            await supabase.from('portfolio').delete().eq('id', id);
+            await supabase.from('portfolio_items').delete().eq('id', id);
             setItems(prev => prev.filter(item => item.id !== id));
             setSelectedItem(null);
         }}

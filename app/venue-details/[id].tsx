@@ -1,7 +1,7 @@
 import { Button, Icon, Text, useTheme } from '@rneui/themed';
 import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,8 +20,8 @@ import { Calendar } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showToast } from '../../components/AppToast';
 import { UserAvatar } from '../../components/UserAvatar';
+import { SafetyActions } from '../../components/SafetyActions';
 import { supabase } from '../../lib/supabase';
-import { sendPushNotification } from '../../lib/push';
 import { useAuth } from '../../providers/AuthProvider';
 
 const zoneLabelMap: Record<string, string> = {
@@ -35,7 +35,6 @@ const coverFallback =
 
 type VenueProfile = {
   id: string;
-  category_id?: number | null;
   location_zone?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -52,6 +51,7 @@ type VenueProfile = {
   season_open?: string | null;
   season_close?: string | null;
   avgRating?: string;
+  reviewCount?: number;
   profiles?: {
     full_name?: string | null;
     city?: string | null;
@@ -84,10 +84,6 @@ export default function VenueDetailScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchDetails();
-  }, [venueId]);
-
   const heroImage = portfolio[0]?.thumbnail_url || portfolio[0]?.file_url || coverFallback;
 
   const amenities = useMemo(
@@ -102,7 +98,7 @@ export default function VenueDetailScreen() {
     [venue]
   );
 
-  async function fetchDetails() {
+  const fetchDetails = useCallback(async () => {
     if (!venueId) {
       setLoading(false);
       return;
@@ -118,25 +114,26 @@ export default function VenueDetailScreen() {
 
       if (venueError) throw venueError;
 
-      const [profileResult, categoryResult, reviewsResult, portfolioResult, fullReviewsResult] = await Promise.all([
+      const [profileResult, serviceResult, reviewsResult, portfolioResult, fullReviewsResult, locationResult] = await Promise.all([
         supabase.from('profiles').select('full_name, city').eq('id', venueId).maybeSingle(),
-        venueData?.category_id
-          ? supabase.from('categories').select('name').eq('id', venueData.category_id).maybeSingle()
-          : Promise.resolve({ data: null, error: null }),
+        supabase.from('provider_services').select('services(name, service_categories(name))').eq('provider_id', venueId).limit(1).maybeSingle(),
         supabase.from('reviews').select('rating').eq('target_id', venueId),
         supabase
-          .from('portfolio')
+          .from('portfolio_items')
           .select('id, file_url, thumbnail_url')
-          .eq('specialist_id', venueId)
+          .eq('owner_id', venueId)
+          .eq('is_hidden', false)
           .order('is_pinned', { ascending: false })
           .order('created_at', { ascending: false }),
         supabase.from('reviews').select('*, client:profiles!client_id(full_name, avatar_url)').eq('target_id', venueId).order('created_at', { ascending: false }).limit(5),
+        supabase.rpc('get_venue_location', { p_provider_id: venueId }),
       ]);
 
       if (profileResult.error) throw profileResult.error;
-      if (categoryResult.error) throw categoryResult.error;
+      if (serviceResult.error) throw serviceResult.error;
       if (reviewsResult.error) throw reviewsResult.error;
       if (portfolioResult.error) throw portfolioResult.error;
+      if (locationResult.error) throw locationResult.error;
 
       const ratings = reviewsResult.data || [];
       const avgRating =
@@ -144,10 +141,15 @@ export default function VenueDetailScreen() {
           ? (ratings.reduce((acc: number, review: any) => acc + Number(review.rating || 0), 0) / ratings.length).toFixed(1)
           : 'NEW';
 
+      const serviceData = serviceResult.data as unknown as {
+        services?: { service_categories?: { name?: string | null } | null } | null;
+      } | null;
       setVenue({
         ...(venueData as VenueProfile),
+        latitude: locationResult.data?.[0]?.latitude ?? null,
+        longitude: locationResult.data?.[0]?.longitude ?? null,
         profiles: profileResult.data,
-        categories: categoryResult.data,
+        categories: { name: serviceData?.services?.service_categories?.name || null },
         avgRating,
         reviewCount: ratings.length,
       });
@@ -159,7 +161,11 @@ export default function VenueDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [venueId]);
+
+  useEffect(() => {
+    void fetchDetails();
+  }, [fetchDetails]);
 
   function openMap() {
     if (!venue?.latitude || !venue?.longitude) {
@@ -184,7 +190,7 @@ export default function VenueDetailScreen() {
       await Share.share({
         message: `Посмотрите объект на Алаколе: ${venue.profiles?.full_name || 'Зона отдыха'}\n${venue.address || 'Адрес уточняется'}\nTaptym`,
       });
-    } catch (error) {
+    } catch {
       // share failed
     }
   }
@@ -207,16 +213,12 @@ export default function VenueDetailScreen() {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('bookings').insert({
-        client_id: user.id,
-        specialist_id: venueId,
-        date_time: `${checkInDate} ${checkOutDate}`,
-        message: bookingMessage || null,
-        status: 'pending',
-        booking_type: 'venue',
-        guest_count: parseInt(guestCount, 10) || null,
-        check_in_date: checkInDate,
-        check_out_date: checkOutDate,
+      const { error } = await supabase.rpc('create_stay_booking', {
+        p_venue_id: venueId,
+        p_starts_at: new Date(`${checkInDate}T12:00:00`).toISOString(),
+        p_ends_at: new Date(`${checkOutDate}T12:00:00`).toISOString(),
+        p_guest_count: Number.parseInt(guestCount, 10),
+        p_message: bookingMessage || null,
       });
 
       if (error) throw error;
@@ -226,7 +228,6 @@ export default function VenueDetailScreen() {
       setBookingMessage('');
       setCheckInDate('');
       setCheckOutDate('');
-      await sendPushNotification(venueId, 'Новая заявка на бронь! 🏨', `${user.user_metadata?.full_name || 'Гость'} хочет забронировать на ${checkInDate} — ${checkOutDate}`);
     } catch (error: any) {
       showToast({ type: 'error', title: 'Ошибка', message: error.message });
     } finally {
@@ -300,13 +301,13 @@ export default function VenueDetailScreen() {
         <View style={styles.content}>
           <View style={styles.statsPanel}>
             <TouchableOpacity style={styles.statItem} onPress={openMap}>
-              <Icon name="map-pin" type="feather" size={20} color="#9B2CFF" />
+              <Icon name="map-pin" type="feather" size={20} color="#F0B90B" />
               <Text style={styles.statValue}>Карта</Text>
               <Text style={styles.statLabel}>Открыть</Text>
             </TouchableOpacity>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Icon name="users" type="feather" size={20} color="#9B2CFF" />
+              <Icon name="users" type="feather" size={20} color="#F0B90B" />
               <Text style={styles.statValue}>{venue.capacity || 0}</Text>
               <Text style={styles.statLabel}>Мест</Text>
             </View>
@@ -377,9 +378,6 @@ export default function VenueDetailScreen() {
           <View style={styles.section}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={styles.sectionTitle}>Отзывы ({venue?.reviewCount || reviews.length})</Text>
-              <TouchableOpacity onPress={() => router.push({ pathname: '/(client)/add-review', params: { targetId: venueId, name: venue?.profiles?.full_name || 'Заведение', avatar: portfolio[0]?.file_url || coverFallback } })}>
-                <Text style={{ color: '#F0B90B', fontWeight: 'bold' }}>Написать</Text>
-              </TouchableOpacity>
             </View>
             {reviews.length > 0 ? reviews.map((r) => (
               <View key={r.id} style={[styles.reviewCard, { backgroundColor: '#1E2329' }]}>
@@ -398,12 +396,13 @@ export default function VenueDetailScreen() {
               <Text style={{ color: '#6B6675', textAlign: 'center', marginTop: 10 }}>Пока нет отзывов</Text>
             )}
           </View>
+          <SafetyActions targetId={venueId} />
         </View>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
         <TouchableOpacity onPress={() => router.push(`/chat/${venueId}`)} style={styles.chatBtn}>
-          <Icon name="message-circle" type="feather" color="#9B2CFF" size={25} />
+          <Icon name="message-circle" type="feather" color="#F0B90B" size={25} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.bookBtn} onPress={() => setModalVisible(true)}>
           <Text style={styles.bookBtnText}>Забронировать</Text>
@@ -418,7 +417,7 @@ export default function VenueDetailScreen() {
               <Text style={styles.modalLabel}>Дата заезда</Text>
               <Calendar
                 onDayPress={(day: any) => setCheckInDate(day.dateString)}
-                markedDates={checkInDate ? { [checkInDate]: { selected: true, selectedColor: '#9B2CFF' } } : {}}
+                markedDates={checkInDate ? { [checkInDate]: { selected: true, selectedColor: '#F0B90B' } } : {}}
                 theme={{ calendarBackground: 'transparent', dayTextColor: '#F8FAFC', monthTextColor: '#F8FAFC', arrowColor: '#22E7C8' }}
               />
               <Text style={[styles.modalLabel, { marginTop: 12 }]}>Дата выезда</Text>

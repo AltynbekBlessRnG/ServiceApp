@@ -4,11 +4,11 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { resolveHomeRoute } from '../lib/auth-routing';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../providers/AuthProvider';
+import { signOutSecurely } from '../lib/auth-actions';
 
 export default function Index() {
-  const { session, isLoading, user } = useAuth();
+  const { session, isLoading, role, isBanned } = useAuth();
   const router = useRouter();
   const [status, setStatus] = useState('Инициализация...');
   const [showReset, setShowReset] = useState(false);
@@ -22,34 +22,25 @@ export default function Index() {
   }, []);
 
   const checkRole = useCallback(async () => {
-    if (!user) return;
+    if (!session?.user) return;
 
     setStatus('Синхронизация профиля...');
 
     try {
-      if (user.user_metadata?.role) {
-        router.replace(resolveHomeRoute(user.user_metadata.role) as never);
+      if (isBanned) {
+        setStatus('Аккаунт заблокирован');
         return;
       }
-
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('role, city')
-        .eq('id', user.id)
-        .single();
-
-      if (error || !profile?.role) {
+      if (!role) {
         router.replace('/(auth)/role-select');
         return;
       }
-
-      await supabase.auth.updateUser({ data: { role: profile.role, city: profile.city } });
-      router.replace(resolveHomeRoute(profile.role) as never);
+      router.replace(resolveHomeRoute(role));
     } catch (error) {
       console.error('Root auth routing error:', error);
       router.replace('/(auth)/role-select');
     }
-  }, [router, user]);
+  }, [isBanned, role, router, session?.user]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -101,7 +92,7 @@ export default function Index() {
           <Button
             title="Сбросить и войти заново"
             onPress={async () => {
-              await supabase.auth.signOut();
+              await signOutSecurely();
               router.replace('/onboarding');
             }}
             buttonStyle={{

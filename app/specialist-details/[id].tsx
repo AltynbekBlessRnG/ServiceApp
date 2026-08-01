@@ -2,9 +2,9 @@ import { Button, Chip, Icon, Input, Text, useTheme } from '@rneui/themed';
 import { ResizeMode, Video } from 'expo-av';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator, Alert, Dimensions,
+    ActivityIndicator, Alert,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -17,12 +17,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '../../components/AppHeader';
 import { showToast } from '../../components/AppToast';
 import { UserAvatar } from '../../components/UserAvatar';
+import { SafetyActions } from '../../components/SafetyActions';
 import { useHaptics } from '../../hooks/useHaptics';
 import { supabase } from '../../lib/supabase';
-import { sendPushNotification } from '../../lib/push';
 import { useAuth } from '../../providers/AuthProvider';
 
-const { width } = Dimensions.get('window');
 const WORK_HOURS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
 
 export default function SpecialistDetailScreen() {
@@ -33,6 +32,7 @@ export default function SpecialistDetailScreen() {
   // 1. ПОЛУЧАЕМ ДАННЫЕ ИЗ ССЫЛКИ (Они доступны МГНОВЕННО)
   const params = useLocalSearchParams();
   const targetId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const requestedServiceId = Array.isArray(params.serviceId) ? params.serviceId[0] : params.serviceId;
   
   // Данные для "Мгновенного рендера"
   const initialName = params.full_name as string || 'Загрузка...';
@@ -60,17 +60,19 @@ export default function SpecialistDetailScreen() {
   const [selectedMedia, setSelectedMedia] = useState<any>(null);
   const haptics = useHaptics();
 
-  useEffect(() => { if (targetId) loadData(); }, [targetId, user]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     // Не блокируем экран! Пользователь уже видит имя и аватар
     try {
       const [specReq, portReq, revReq, busyReq, favReq] = await Promise.all([
-          supabase.from('specialist_search_view').select('*').eq('id', targetId).single(),
-          supabase.from('portfolio').select('*').eq('specialist_id', targetId).order('is_pinned', { ascending: false }).order('created_at', { ascending: false }).limit(12),
+          supabase.from('provider_search_view').select('*').eq('id', targetId).limit(1).maybeSingle(),
+          supabase.from('portfolio_items').select('*').eq('owner_id', targetId).eq('is_hidden', false).order('is_pinned', { ascending: false }).order('created_at', { ascending: false }).limit(12),
           supabase.from('reviews').select('*, client:profiles!client_id(full_name, avatar_url)').eq('target_id', targetId).order('created_at', { ascending: false }).limit(5),
-          supabase.from('busy_dates').select('date').eq('specialist_id', targetId),
-          user ? supabase.from('favorites').select('id').eq('user_id', user.id).eq('target_id', targetId).maybeSingle() : Promise.resolve({ data: null })
+          supabase.rpc('get_provider_unavailable_intervals', {
+            p_provider_id: targetId,
+            p_from: new Date().toISOString(),
+            p_to: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
+          }),
+          user ? supabase.from('favorites').select('target_id').eq('user_id', user.id).eq('target_id', targetId).maybeSingle() : Promise.resolve({ data: null })
       ]);
 
       if (specReq.data) setSpecialist(specReq.data);
@@ -85,7 +87,10 @@ export default function SpecialistDetailScreen() {
       
       if (busyReq.data) {
           const marks: any = {};
-          busyReq.data.forEach((d: any) => marks[d.date] = { disabled: true, disableTouchEvent: true, marked: true, dotColor: theme.colors.error });
+          busyReq.data.forEach((d: any) => {
+            const date = new Date(d.starts_at).toISOString().slice(0, 10);
+            marks[date] = { disabled: true, disableTouchEvent: true, marked: true, dotColor: '#F6465D' };
+          });
           setBusyDates(marks);
       }
 
@@ -93,7 +98,11 @@ export default function SpecialistDetailScreen() {
 
     } catch (e) { console.error(e); }
     setLoading(false);
-  }
+  }, [targetId, user]);
+
+  useEffect(() => {
+    if (targetId) void loadData();
+  }, [loadData, targetId]);
 
   const handleShare = async () => {
       const name = specialist?.full_name || initialName;
@@ -104,24 +113,48 @@ export default function SpecialistDetailScreen() {
     setSelectedDate(day.dateString);
     setSelectedTime(''); 
     // Грузим занятость только при клике на дату (экономим трафик)
-    const { data } = await supabase.from('bookings').select('date_time').eq('specialist_id', targetId).ilike('date_time', `${day.dateString}%`).neq('status', 'rejected');
-    const { data: manual } = await supabase.from('busy_times').select('time').eq('specialist_id', targetId).eq('date', day.dateString);
-    
-    const times1 = data?.map(b => b.date_time.split(' ')[1]) || [];
-    const times2 = manual?.map(b => b.time) || [];
-    setBusySlots([...times1, ...times2]);
+    const dayStart = new Date(`${day.dateString}T00:00:00`);
+    const dayEnd = new Date(`${day.dateString}T23:59:59.999`);
+    const { data } = await supabase.rpc('get_provider_unavailable_intervals', {
+      p_provider_id: targetId,
+      p_from: dayStart.toISOString(),
+      p_to: dayEnd.toISOString(),
+    });
+    const formatTime = (value: string) => {
+      const date = new Date(value);
+      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    };
+    setBusySlots(data?.map((interval: { starts_at: string }) => formatTime(interval.starts_at)) || []);
   }
 
   async function handleBooking() {
     if (!user) return router.push('/(auth)/login');
     setBookingLoading(true);
-    const { error } = await supabase.from('bookings').insert({ client_id: user.id, specialist_id: targetId, date_time: `${selectedDate} ${selectedTime}`, message: bookingMessage, status: 'pending' });
+    let serviceId = Number(requestedServiceId);
+    if (!Number.isFinite(serviceId)) {
+      const { data: providerService } = await supabase
+        .from('provider_services')
+        .select('service_id')
+        .eq('provider_id', targetId)
+        .limit(1)
+        .maybeSingle();
+      serviceId = Number(providerService?.service_id);
+    }
+    if (!Number.isFinite(serviceId) || !selectedDate || !selectedTime) {
+      setBookingLoading(false);
+      return showToast({ type: 'error', title: 'Ошибка', message: 'Выберите услугу, дату и время' });
+    }
+    const { error } = await supabase.rpc('create_appointment', {
+      p_provider_id: targetId,
+      p_service_id: serviceId,
+      p_starts_at: new Date(`${selectedDate}T${selectedTime}:00`).toISOString(),
+      p_message: bookingMessage || null,
+    });
     setBookingLoading(false);
     if (!error) { 
       haptics.success(); 
       showToast({ type: 'success', title: 'Заявка отправлена!', message: 'Специалист получит уведомление' }); 
       setModalVisible(false); setBookingMessage(''); 
-      await sendPushNotification(targetId, 'Новая заявка! 📋', `${user.user_metadata?.full_name || 'Клиент'} хочет записаться на ${selectedDate} в ${selectedTime}`);
     } 
     else { haptics.error(); showToast({ type: 'error', title: 'Ошибка', message: error.message }); }
   }
@@ -221,9 +254,6 @@ export default function SpecialistDetailScreen() {
                 <View style={styles.section}>
                     <View style={styles.rowBetween}>
                         <Text h4 style={[styles.sectionTitle, { color: '#fff' }]}>Отзывы ({reviews.length})</Text>
-                        <TouchableOpacity onPress={() => router.push({ pathname: '/add-review', params: { targetId, name: specialist?.full_name || initialName, avatar: specialist?.avatar_url || initialAvatar } })}>
-                            <Text style={{ color: '#F0B90B', fontWeight: 'bold' }}>Написать</Text>
-                        </TouchableOpacity>
                     </View>
                     {reviews.map((r) => (
                         <View key={r.id} style={[styles.reviewCard, { backgroundColor: '#1E2329' }]}>
@@ -239,6 +269,7 @@ export default function SpecialistDetailScreen() {
                     ))}
                 </View>
             )}
+            <SafetyActions targetId={targetId} />
         </View>
       </ScrollView>
 

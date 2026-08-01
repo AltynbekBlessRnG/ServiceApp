@@ -9,7 +9,7 @@ import { useAuth } from '../../providers/AuthProvider';
 
 export default function RoleSelectScreen() {
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, refreshAuthorization } = useAuth();
   const insets = useSafeAreaInsets();
   const { city } = useLocalSearchParams();
 
@@ -21,31 +21,27 @@ export default function RoleSelectScreen() {
 
     try {
       const userCity = typeof city === 'string' ? city : user.user_metadata?.city || null;
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          role,
-          city: userCity,
-        })
-        .eq('id', user.id);
+      const { error } = await supabase.rpc('set_initial_role', {
+        p_role: role,
+        p_city: userCity,
+      });
 
       if (error) throw error;
-
-      if (role === 'specialist') {
-        await supabase.from('specialist_profiles').upsert({ id: user.id });
-      } else if (role === 'venue') {
-        await supabase.from('venue_profiles').upsert({ id: user.id });
-      }
-
-      await supabase.auth.updateUser({ data: { role, city: userCity } });
-      router.replace(resolveHomeRoute(role) as never);
+      await refreshAuthorization();
+      router.replace(resolveHomeRoute(role));
     } catch (error: any) {
       Alert.alert('Ошибка', error.message);
       setLoading(false);
     }
   }
 
-  const RoleCard = ({ role, title, desc, icon, color }: any) => (
+  const RoleCard = ({ role, title, desc, icon, color }: {
+    role: 'client' | 'specialist' | 'venue';
+    title: string;
+    desc: string;
+    icon: string;
+    color: string;
+  }) => (
     <TouchableOpacity
       style={[styles.card, { borderColor: `${color}40`, shadowColor: color }]}
       activeOpacity={0.8}
