@@ -21,7 +21,7 @@ export default function PrivacyPolicyScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.date}>Последнее обновление: 20 июня 2026 г.</Text>
+        <Text style={styles.date}>Последнее обновление: 3 августа 2026 г.</Text>
 
         <Text style={styles.heading}>1. Сбор информации</Text>
         <Text style={styles.text}>
@@ -40,7 +40,7 @@ export default function PrivacyPolicyScreen() {
 
         <Text style={styles.heading}>3. Хранение данных</Text>
         <Text style={styles.text}>
-          Ваши данные хранятся на защищенных серверах Supabase. Мы не передаем ваши персональные данные третьим лицам, за исключением случаев, предусмотренных законодательством Республики Казахстан.
+          Для работы Taptym используются Supabase, облачная инфраструктура Amazon Web Services и Expo для push-уведомлений. Текущий регион Supabase находится в Сеуле, поэтому обработка может включать трансграничную передачу данных.
         </Text>
 
         <Text style={styles.heading}>4. Геолокация</Text>
@@ -65,7 +65,9 @@ export default function PrivacyPolicyScreen() {
         <Text style={styles.heading}>7. Контакты</Text>
         <Text style={styles.text}>
           По вопросам конфиденциальности обращайтесь:{"\n"}
-          Email: privacy@taptym.kz{"\n"}
+          Email: taptym@internet.ru{"\n"}
+          Телефон: +7 702 058 7132{"\n"}
+          Оператор: Шалгимбаев Ернар Донесбайулы{"\n"}
           Разработчик: Altynbek Temirkhan
         </Text>
 
