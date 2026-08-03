@@ -31,16 +31,29 @@ export default function EditProfileScreen() {
   const [alokolZone, setAlakolZone] = useState<'akshi' | 'koktuma' | 'usharal' | null>(null);
 
   useEffect(() => {
-    if (selectedCategory) {
-      fetchSubcategories(selectedCategory);
-    } else {
+    let cancelled = false;
+    if (!selectedCategory) {
       setSubcategories([]);
+      return () => { cancelled = true; };
     }
+
+    setSubcategories([]);
+    void supabase
+      .from('services')
+      .select('id, name')
+      .eq('category_id', selectedCategory)
+      .eq('is_active', true)
+      .order('sort_order')
+      .then(({ data }) => {
+        if (!cancelled) setSubcategories(data || []);
+      });
+
+    return () => { cancelled = true; };
   }, [selectedCategory]);
 
   const loadData = useCallback(async () => {
     try {
-      const { data: catData } = await supabase.from('service_categories').select('id, name').eq('provider_type', 'specialist').order('sort_order');
+      const { data: catData } = await supabase.from('service_categories').select('id, name').eq('provider_type', 'specialist').eq('is_active', true).order('sort_order');
       if (catData) setCategories(catData);
       if (!user) return;
 
@@ -81,11 +94,6 @@ export default function EditProfileScreen() {
     if (!authLoading && user) void loadData();
   }, [authLoading, loadData, user]);
 
-  async function fetchSubcategories(categoryId: number) {
-    const { data } = await supabase.from('services').select('id, name').eq('category_id', categoryId).eq('is_active', true).order('sort_order');
-    if (data) setSubcategories(data);
-  }
-
   const toggleTag = (id: number) => {
     if (selectedTags.includes(id)) {
       setSelectedTags((prev) => prev.filter((tagId) => tagId !== id));
@@ -96,6 +104,9 @@ export default function EditProfileScreen() {
 
   async function saveProfile() {
     if (!user) return;
+    if (!selectedCategory || selectedTags.length === 0) {
+      return Alert.alert('Выберите услуги', 'Укажите основную сферу и хотя бы один навык');
+    }
     setLoading(true);
     try {
       const updates = {
@@ -109,16 +120,12 @@ export default function EditProfileScreen() {
       const { error } = await supabase.from('specialist_profiles').upsert(updates);
       if (error) throw error;
 
-      await supabase.from('provider_services').delete().eq('provider_id', user.id);
-      if (selectedTags.length > 0) {
-        const tagRows = selectedTags.map((serviceId) => ({
-          provider_id: user.id,
-          service_id: serviceId,
-          price_from: parseInt(price, 10) || 0,
-        }));
-        const { error: tagError } = await supabase.from('provider_services').insert(tagRows);
-        if (tagError) throw tagError;
-      }
+      const { error: servicesError } = await supabase.rpc('replace_my_provider_services', {
+        p_category_id: selectedCategory,
+        p_service_ids: selectedTags,
+        p_price_from: parseInt(price, 10) || 0,
+      });
+      if (servicesError) throw servicesError;
 
       Alert.alert('Успех', 'Анкета мастера обновлена');
       router.back();
