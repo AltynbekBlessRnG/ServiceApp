@@ -95,13 +95,13 @@ export default function CategoryResultsScreen() {
       const serviceFilters: (string | null)[] = selectedServices.length ? selectedServices : [null];
       const responses = await Promise.all(serviceFilters.map((selectedService) => supabase.rpc('search_providers', {
         p_provider_type: providerType,
-        p_category_slug: categorySlug,
-        p_service_slug: selectedService,
-        p_city: null,
-        p_max_price: null,
+        p_category_slug: categorySlug || undefined,
+        p_service_slug: selectedService || undefined,
+        p_city: undefined,
+        p_max_price: undefined,
         p_sort: sortBy === 'distance' ? 'distance' : sortBy === 'price_asc' ? 'price' : 'rating',
-        p_latitude: providerType === 'venue' ? userLocation?.lat ?? null : null,
-        p_longitude: providerType === 'venue' ? userLocation?.lng ?? null : null,
+        p_latitude: providerType === 'venue' ? userLocation?.lat : undefined,
+        p_longitude: providerType === 'venue' ? userLocation?.lng : undefined,
       })));
       const failed = responses.find((response) => response.error);
       if (failed?.error) throw failed.error;

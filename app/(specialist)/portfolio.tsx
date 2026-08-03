@@ -61,6 +61,7 @@ export default function MyPortfolioScreen() {
   }
 
   async function uploadFile(asset: any) {
+    if (!user) return;
     setUploading(true);
     try {
       const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
@@ -68,7 +69,7 @@ export default function MyPortfolioScreen() {
       const fileType = isVideo ? 'video' : 'image';
       const timestamp = Date.now();
       
-      const fileName = `${user?.id}/${timestamp}.${ext}`;
+      const fileName = `${user.id}/${timestamp}.${ext}`;
       
       // 1. Грузим основной файл
       const publicUrl = await uploadFileToSupabase('portfolio', asset.uri, fileName);
@@ -78,14 +79,14 @@ export default function MyPortfolioScreen() {
       if (isVideo) {
           try {
               const { uri } = await VideoThumbnails.getThumbnailAsync(asset.uri, { time: 1000 });
-              const thumbName = `${user?.id}/${timestamp}_thumb.jpg`;
+              const thumbName = `${user.id}/${timestamp}_thumb.jpg`;
               thumbUrl = await uploadFileToSupabase('portfolio', uri, thumbName);
           } catch { /* thumbnail failed */ }
       }
       
       // 3. Пишем в базу
       const { error } = await supabase.from('portfolio_items').insert({
-          owner_id: user?.id,
+          owner_id: user.id,
           file_url: publicUrl, 
           thumbnail_url: thumbUrl,
           file_type: fileType,
@@ -106,13 +107,14 @@ export default function MyPortfolioScreen() {
 
   // 1. Сделать обложкой (Только одна может быть true)
   async function makeHero(item: any) {
+      if (!user) return;
       // Оптимистичное обновление: убираем у всех, ставим этому
       const newItems = items.map(i => ({ ...i, is_hero: i.id === item.id }));
       setItems(newItems);
       setSelectedItem({ ...item, is_hero: true });
 
       // В базе: сначала сбрасываем всем is_hero
-      await supabase.from('portfolio_items').update({ is_hero: false }).eq('owner_id', user?.id);
+      await supabase.from('portfolio_items').update({ is_hero: false }).eq('owner_id', user.id);
       // Ставим этому
       await supabase.from('portfolio_items').update({ is_hero: true }).eq('id', item.id);
       

@@ -55,15 +55,16 @@ export default function VenuePortfolioScreen() {
   }
 
   async function uploadFile(asset: any) {
+    if (!user) return;
     setUploading(true);
     try {
       const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
       const timestamp = Date.now();
-      const fileName = `${user?.id}/${timestamp}.${ext}`;
+      const fileName = `${user.id}/${timestamp}.${ext}`;
       const publicUrl = await uploadFileToSupabase('portfolio', asset.uri, fileName);
 
       const { error } = await supabase.from('portfolio_items').insert({
-          owner_id: user?.id,
+          owner_id: user.id,
           file_url: publicUrl,
           thumbnail_url: publicUrl,
           file_type: 'image',
@@ -90,10 +91,11 @@ export default function VenuePortfolioScreen() {
   }
 
   async function makeHero(item: any) {
+      if (!user) return;
       const newItems = items.map(i => ({ ...i, is_hero: i.id === item.id }));
       setItems(newItems);
       setSelectedItem({ ...item, is_hero: true });
-      await supabase.from('portfolio_items').update({ is_hero: false }).eq('owner_id', user?.id);
+      await supabase.from('portfolio_items').update({ is_hero: false }).eq('owner_id', user.id);
       await supabase.from('portfolio_items').update({ is_hero: true }).eq('id', item.id);
       Alert.alert("Обложка обновлена", "Это фото будет показано в карточке заведения.");
   }

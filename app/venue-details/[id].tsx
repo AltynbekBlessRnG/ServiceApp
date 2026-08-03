@@ -218,7 +218,7 @@ export default function VenueDetailScreen() {
         p_starts_at: new Date(`${checkInDate}T12:00:00`).toISOString(),
         p_ends_at: new Date(`${checkOutDate}T12:00:00`).toISOString(),
         p_guest_count: Number.parseInt(guestCount, 10),
-        p_message: bookingMessage || null,
+        p_message: bookingMessage || undefined,
       });
 
       if (error) throw error;

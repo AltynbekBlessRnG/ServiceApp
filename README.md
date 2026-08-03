@@ -13,7 +13,7 @@ Expo/React Native marketplace for clients, specialists, and venues. Administrati
 
 ```bash
 npm ci
-copy .env.example .env
+cp .env.example .env
 npx supabase start
 npx supabase db reset
 npm run dev

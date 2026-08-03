@@ -19,6 +19,9 @@ export default function AddReviewScreen() {
 
   async function submitReview() {
     if (!user?.id) return Alert.alert('Ошибка', 'Вы должны войти в аккаунт');
+    const booking = Array.isArray(bookingId) ? bookingId[0] : bookingId;
+    const target = Array.isArray(targetId) ? targetId[0] : targetId;
+    if (!booking || !target) return Alert.alert('Ошибка', 'Данные заказа не найдены');
     if (!comment.trim()) {
         haptics.error(); // <--- Ошибка
         return Alert.alert('Ошибка', 'Пожалуйста, напишите отзыв');
@@ -27,8 +30,8 @@ export default function AddReviewScreen() {
     setLoading(true);
     const { error } = await supabase.from('reviews').insert({ 
         client_id: user.id, 
-        booking_id: bookingId,
-        target_id: targetId, 
+        booking_id: booking,
+        target_id: target,
         rating, 
         comment: comment.trim() 
     });

@@ -97,6 +97,7 @@ export default function SpecialistScheduleScreen() {
 
   // ОБРАБОТКА НАЖАТИЯ НА СЛОТ
   async function handleSlotPress(time: string) {
+      if (!user) return;
       haptics.light();
 
       // 1. Проверяем, есть ли там ЗАКАЗ
@@ -117,7 +118,7 @@ export default function SpecialistScheduleScreen() {
           const { error } = await supabase
             .from('provider_blocks')
             .delete()
-            .eq('provider_id', user?.id)
+            .eq('provider_id', user.id)
             .eq('starts_at', slotInterval(selectedDate, time).startsAt);
             
           if (!error) {
@@ -128,7 +129,7 @@ export default function SpecialistScheduleScreen() {
           const { error } = await supabase
             .from('provider_blocks')
             .insert({
-              provider_id: user?.id,
+              provider_id: user.id,
               starts_at: slotInterval(selectedDate, time).startsAt,
               ends_at: slotInterval(selectedDate, time).endsAt,
             });

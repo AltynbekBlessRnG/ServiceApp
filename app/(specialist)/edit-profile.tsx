@@ -50,7 +50,11 @@ export default function EditProfileScreen() {
         setExperience(profile.experience_years?.toString() || '');
         setPrice(profile.price_start?.toString() || '');
         setWorksInAlakol(Boolean(profile.service_area));
-        setAlakolZone(profile.service_area || null);
+        setAlakolZone(
+          profile.service_area === 'akshi' || profile.service_area === 'koktuma' || profile.service_area === 'usharal'
+            ? profile.service_area
+            : null
+        );
       }
 
       const { data: tags } = await supabase
@@ -126,6 +130,7 @@ export default function EditProfileScreen() {
   }
 
   async function pickAvatar() {
+    if (!user) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -136,9 +141,9 @@ export default function EditProfileScreen() {
     if (!result.canceled) {
       setLoading(true);
       try {
-        const fileName = `${user?.id}/avatar_${Date.now()}.jpg`;
+        const fileName = `${user.id}/avatar_${Date.now()}.jpg`;
         const publicUrl = await uploadFileToSupabase('avatars', result.assets[0].uri, fileName);
-        await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user?.id);
+        await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
         setAvatarUrl(publicUrl);
       } catch (error: any) {
         Alert.alert('Ошибка', error.message);

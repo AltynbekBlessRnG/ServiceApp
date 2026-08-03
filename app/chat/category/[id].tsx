@@ -22,7 +22,8 @@ export default function CategoryChatScreen() {
   const [conversationId, setConversationId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) return;
+    const categoryId = Number(Array.isArray(id) ? id[0] : id);
+    if (!Number.isFinite(categoryId)) return;
     let active = true;
     let channel: ReturnType<typeof supabase.channel> | null = null;
     void (async () => {
@@ -30,7 +31,7 @@ export default function CategoryChatScreen() {
         .from('conversations')
         .select('id')
         .eq('kind', 'category')
-        .eq('category_id', id)
+        .eq('category_id', categoryId)
         .maybeSingle();
       if (!active || conversationError || !conversation) {
         if (active) setLoading(false);

@@ -148,7 +148,7 @@ export default function SpecialistDetailScreen() {
       p_provider_id: targetId,
       p_service_id: serviceId,
       p_starts_at: new Date(`${selectedDate}T${selectedTime}:00`).toISOString(),
-      p_message: bookingMessage || null,
+      p_message: bookingMessage || undefined,
     });
     setBookingLoading(false);
     if (!error) { 

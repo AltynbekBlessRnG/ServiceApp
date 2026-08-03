@@ -60,6 +60,7 @@ export default function SettingsScreen() {
   }, [fetchProfile, user]);
 
   async function pickImage() {
+    if (!user) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -70,9 +71,9 @@ export default function SettingsScreen() {
     if (!result.canceled && result.assets[0].uri) {
       setLoading(true);
       try {
-        const fileName = `${user?.id}/avatar_${Date.now()}.jpg`;
+        const fileName = `${user.id}/avatar_${Date.now()}.jpg`;
         const publicUrl = await uploadFileToSupabase('avatars', result.assets[0].uri, fileName);
-        await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user?.id);
+        await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
         setProfile({ ...profile, avatar_url: publicUrl });
       } catch (e: any) {
         Alert.alert("Ошибка", e.message);
@@ -83,10 +84,11 @@ export default function SettingsScreen() {
   }
 
   async function handleSave() {
+    if (!user) return;
     setLoading(true);
     // <--- СОХРАНЯЕМ ГОРОД В БАЗУ
     const [{ error }, { error: privateError }] = await Promise.all([
-      supabase.from('profiles').update({ full_name: fullName, city }).eq('id', user?.id),
+      supabase.from('profiles').update({ full_name: fullName, city }).eq('id', user.id),
       supabase.rpc('update_my_private_profile', { p_phone: phone }),
     ]);
 

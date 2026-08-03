@@ -692,7 +692,7 @@ SET search_path = private, public, pg_temp
 AS $$
   SELECT dt.token, dt.platform
   FROM private.device_tokens dt
-  WHERE auth.role() = 'service_role' AND dt.user_id = p_user_id;
+  WHERE dt.user_id = p_user_id;
 $$;
 
 CREATE OR REPLACE FUNCTION public.notify_booking_change()
@@ -1011,6 +1011,10 @@ REVOKE ALL ON FUNCTION public.search_providers(public.provider_type, TEXT, TEXT,
 REVOKE ALL ON FUNCTION public.is_conversation_member(UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.moderate_report(UUID, TEXT, TEXT) FROM PUBLIC;
 
+-- Hosted Supabase grants function execution directly to API roles by default.
+-- Revoking from PUBLIC alone does not remove those role-specific grants.
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC, anon, authenticated;
+
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT SELECT ON public.service_categories, public.services TO anon, authenticated;
 GRANT SELECT ON public.provider_search_view TO authenticated;
@@ -1043,7 +1047,6 @@ GRANT EXECUTE ON FUNCTION public.update_my_private_profile(TEXT) TO authenticate
 GRANT EXECUTE ON FUNCTION public.get_venue_location(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_my_venue_location(DOUBLE PRECISION, DOUBLE PRECISION, BOOLEAN) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.consume_ai_quota() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_push_tokens(UUID) TO service_role;
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
@@ -1059,7 +1062,7 @@ CREATE POLICY media_public_read ON storage.objects FOR SELECT USING (bucket_id I
 CREATE POLICY media_owner_insert ON storage.objects FOR INSERT TO authenticated
 WITH CHECK (bucket_id IN ('avatars', 'portfolio') AND (storage.foldername(name))[1] = auth.uid()::TEXT);
 CREATE POLICY media_owner_update ON storage.objects FOR UPDATE TO authenticated
-USING ((storage.foldername(name))[1] = auth.uid()::TEXT)
-WITH CHECK ((storage.foldername(name))[1] = auth.uid()::TEXT);
+USING (bucket_id IN ('avatars', 'portfolio') AND (storage.foldername(name))[1] = auth.uid()::TEXT)
+WITH CHECK (bucket_id IN ('avatars', 'portfolio') AND (storage.foldername(name))[1] = auth.uid()::TEXT);
 CREATE POLICY media_owner_delete ON storage.objects FOR DELETE TO authenticated
-USING ((storage.foldername(name))[1] = auth.uid()::TEXT);
+USING (bucket_id IN ('avatars', 'portfolio') AND (storage.foldername(name))[1] = auth.uid()::TEXT);

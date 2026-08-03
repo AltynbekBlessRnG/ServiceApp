@@ -52,7 +52,11 @@ export default function EditVenueProfile() {
         setDescription(profile.description || '');
         setAddress(profile.address || '');
         setCapacity(profile.capacity ? String(profile.capacity) : '');
-        setLocationZone(profile.location_zone || null);
+        setLocationZone(
+          profile.location_zone === 'akshi' || profile.location_zone === 'koktuma' || profile.location_zone === 'usharal'
+            ? profile.location_zone
+            : null
+        );
         setPriceFrom(profile.price_from ? String(profile.price_from) : '');
         setDistanceToBeach(profile.distance_to_beach_m ? String(profile.distance_to_beach_m) : '');
         setSeasonOpen(profile.season_open || '');
@@ -108,6 +112,7 @@ export default function EditVenueProfile() {
   }
 
   async function pickAvatar() {
+    if (!user) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -118,9 +123,9 @@ export default function EditVenueProfile() {
     if (!result.canceled) {
       setLoading(true);
       try {
-        const fileName = `${user?.id}/avatar_${Date.now()}.jpg`;
+        const fileName = `${user.id}/avatar_${Date.now()}.jpg`;
         const publicUrl = await uploadFileToSupabase('avatars', result.assets[0].uri, fileName);
-        await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user?.id);
+        await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
         setAvatarUrl(publicUrl);
       } finally {
         setLoading(false);
