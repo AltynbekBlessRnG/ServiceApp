@@ -14,7 +14,9 @@ INSERT INTO public.service_categories (slug, provider_type, name, icon, sort_ord
   ('leisure', 'venue', 'Отдых и туризм', 'home', 40),
   ('legal', 'venue', 'Юридические услуги', 'briefcase', 50),
   ('home', 'venue', 'Бытовые услуги / Ремонт', 'home', 60),
-  ('education', 'venue', 'Образование и спорт', 'book-open', 70)
+  ('education', 'venue', 'Образование и спорт', 'book-open', 70),
+  ('food', 'venue', 'Питание', 'coffee', 80),
+  ('entertainment', 'venue', 'Развлечения', 'music', 90)
 ON CONFLICT (provider_type, slug) DO UPDATE SET
   name = EXCLUDED.name, icon = EXCLUDED.icon, sort_order = EXCLUDED.sort_order, is_active = TRUE;
 
@@ -36,13 +38,23 @@ WITH seed(provider_type, category_slug, slug, name, icon, sort_order) AS (
     ('specialist'::public.provider_type, 'beauty', 'massage', 'Массажисты', 'smile', 30),
     ('specialist'::public.provider_type, 'beauty', 'cosmetology', 'Косметологи', 'star', 40),
     ('specialist'::public.provider_type, 'beauty', 'stylists', 'Стилисты', 'scissors', 50),
-    ('specialist'::public.provider_type, 'auto', 'car-selection', 'Автоподбор', 'search', 10),
-    ('specialist'::public.provider_type, 'auto', 'mobile-repair', 'Выездной ремонт', 'tool', 20),
-    ('specialist'::public.provider_type, 'leisure', 'recreation', 'Зоны и базы отдыха', 'sun', 10),
-    ('specialist'::public.provider_type, 'leisure', 'glamping', 'Глэмпинги', 'home', 20),
-    ('specialist'::public.provider_type, 'leisure', 'hotels', 'Отели и хостелы', 'home', 30),
-    ('specialist'::public.provider_type, 'leisure', 'sanatoriums', 'Санатории', 'activity', 40),
-    ('specialist'::public.provider_type, 'leisure', 'camps', 'Детские лагеря', 'users', 50),
+    ('specialist'::public.provider_type, 'beauty', 'nurses', 'Медсёстры', 'activity', 60),
+    ('specialist'::public.provider_type, 'beauty', 'rehabilitation', 'Реабилитологи', 'activity', 70),
+    ('specialist'::public.provider_type, 'beauty', 'physical-therapy', 'Специалисты ЛФК', 'activity', 80),
+    ('specialist'::public.provider_type, 'beauty', 'caregivers', 'Сиделки', 'users', 90),
+    ('specialist'::public.provider_type, 'auto', 'diagnostics', 'Автодиагносты', 'search', 10),
+    ('specialist'::public.provider_type, 'auto', 'mechanics', 'Автомеханики', 'tool', 20),
+    ('specialist'::public.provider_type, 'auto', 'auto-electricians', 'Автоэлектрики', 'zap', 30),
+    ('specialist'::public.provider_type, 'auto', 'tire-specialists', 'Мастера шиномонтажа', 'circle', 40),
+    ('specialist'::public.provider_type, 'auto', 'interior-cleaning', 'Химчистка салона', 'droplet', 50),
+    ('specialist'::public.provider_type, 'auto', 'car-selection', 'Автоподбор', 'search', 60),
+    ('specialist'::public.provider_type, 'auto', 'mobile-repair', 'Выездной ремонт', 'tool', 70),
+    ('specialist'::public.provider_type, 'leisure', 'guides', 'Гиды и экскурсоводы', 'map', 10),
+    ('specialist'::public.provider_type, 'leisure', 'tour-organizers', 'Организаторы туров', 'compass', 20),
+    ('specialist'::public.provider_type, 'leisure', 'transfers', 'Трансфер и водители', 'navigation', 30),
+    ('specialist'::public.provider_type, 'leisure', 'outdoor-instructors', 'Инструкторы активного отдыха', 'activity', 40),
+    ('specialist'::public.provider_type, 'leisure', 'equipment-rental', 'Прокат туристического оборудования', 'package', 50),
+    ('specialist'::public.provider_type, 'leisure', 'travel-agents', 'Туристические агенты', 'briefcase', 60),
     ('specialist'::public.provider_type, 'business', 'smm', 'SMM-менеджеры', 'share-2', 10),
     ('specialist'::public.provider_type, 'business', 'marketing', 'Таргетологи и маркетологи', 'target', 20),
     ('specialist'::public.provider_type, 'business', 'design', 'Дизайнеры', 'pen-tool', 30),
@@ -55,6 +67,12 @@ WITH seed(provider_type, category_slug, slug, name, icon, sort_order) AS (
     ('specialist'::public.provider_type, 'home', 'electrical', 'Электрики', 'zap', 20),
     ('specialist'::public.provider_type, 'home', 'repair', 'Мастера по ремонту', 'tool', 30),
     ('specialist'::public.provider_type, 'home', 'handyman', 'Мастер на час', 'clock', 40),
+    ('specialist'::public.provider_type, 'home', 'cleaners', 'Клинеры', 'home', 50),
+    ('specialist'::public.provider_type, 'home', 'furniture-assembly', 'Сборщики мебели', 'tool', 60),
+    ('specialist'::public.provider_type, 'home', 'finishing', 'Мастера отделочных работ', 'layers', 70),
+    ('specialist'::public.provider_type, 'home', 'appliance-repair', 'Ремонт бытовой техники', 'settings', 80),
+    ('specialist'::public.provider_type, 'home', 'installers', 'Установщики', 'tool', 90),
+    ('specialist'::public.provider_type, 'home', 'upholstery-cleaning', 'Химчистка мебели', 'droplet', 100),
     ('specialist'::public.provider_type, 'education', 'tutors', 'Репетиторы', 'book', 10),
     ('specialist'::public.provider_type, 'education', 'trainers', 'Тренеры', 'activity', 20),
     ('specialist'::public.provider_type, 'education', 'driving', 'Инструкторы по вождению', 'navigation', 30),
@@ -87,7 +105,16 @@ WITH seed(provider_type, category_slug, slug, name, icon, sort_order) AS (
     ('venue'::public.provider_type, 'home', 'dry-cleaning', 'Химчистка', 'home', 20),
     ('venue'::public.provider_type, 'education', 'driving-schools', 'Автошколы', 'book', 10),
     ('venue'::public.provider_type, 'education', 'language-schools', 'Языковые курсы', 'globe', 20),
-    ('venue'::public.provider_type, 'education', 'education-centers', 'Образовательные центры', 'award', 30)
+    ('venue'::public.provider_type, 'education', 'education-centers', 'Образовательные центры', 'award', 30),
+    ('venue'::public.provider_type, 'food', 'restaurants', 'Рестораны', 'coffee', 10),
+    ('venue'::public.provider_type, 'food', 'pubs', 'Пабы', 'star', 20),
+    ('venue'::public.provider_type, 'food', 'coffee-shops', 'Кофейни', 'coffee', 30),
+    ('venue'::public.provider_type, 'food', 'pizzerias', 'Пиццерии', 'coffee', 40),
+    ('venue'::public.provider_type, 'food', 'hookah-lounges', 'Кальянные', 'cloud', 50),
+    ('venue'::public.provider_type, 'entertainment', 'bars', 'Бары', 'star', 10),
+    ('venue'::public.provider_type, 'entertainment', 'computer-clubs', 'Компьютерные клубы', 'monitor', 20),
+    ('venue'::public.provider_type, 'entertainment', 'karaoke', 'Караоке', 'mic', 30),
+    ('venue'::public.provider_type, 'entertainment', 'nightclubs', 'Ночные клубы', 'music', 40)
 )
 INSERT INTO public.services(category_id, slug, name, icon, sort_order)
 SELECT c.id, seed.slug, seed.name, seed.icon, seed.sort_order
@@ -96,3 +123,11 @@ JOIN public.service_categories c
   ON c.provider_type = seed.provider_type AND c.slug = seed.category_slug
 ON CONFLICT (category_id, slug) DO UPDATE SET
   name = EXCLUDED.name, icon = EXCLUDED.icon, sort_order = EXCLUDED.sort_order, is_active = TRUE;
+
+UPDATE public.services service
+SET is_active = FALSE
+FROM public.service_categories category
+WHERE category.id = service.category_id
+  AND category.provider_type = 'specialist'
+  AND category.slug = 'leisure'
+  AND service.slug IN ('recreation', 'glamping', 'hotels', 'sanatoriums', 'camps');

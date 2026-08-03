@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.15"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       audit_logs: {
@@ -1004,6 +1029,14 @@ export type Database = {
         Args: { p_platform: string; p_token: string }
         Returns: undefined
       }
+      replace_my_provider_services: {
+        Args: {
+          p_category_id: number
+          p_price_from?: number
+          p_service_ids: number[]
+        }
+        Returns: undefined
+      }
       search_providers: {
         Args: {
           p_category_slug?: string
@@ -1219,6 +1252,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       account_role: ["client", "specialist", "venue"],
@@ -1236,4 +1272,3 @@ export const Constants = {
     },
   },
 } as const
-
