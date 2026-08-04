@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { openLegalDocument } from '../../lib/legal';
 import { getAuthErrorMessage, normalizeEmail, validateRegistrationPassword } from '../../lib/auth-validation';
+import { getCaptchaSiteKey } from '../../lib/captcha';
 
 const KZ_CITIES = [
   'Алматы',
@@ -56,7 +57,7 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [acceptedLegal, setAcceptedLegal] = useState(false);
   const captchaRef = useRef<ConfirmHcaptcha>(null);
-  const captchaSiteKey = process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY?.trim();
+  const captchaSiteKey = getCaptchaSiteKey();
 
   async function signUpWithEmail(captchaToken?: string) {
     if (!fullName.trim()) {

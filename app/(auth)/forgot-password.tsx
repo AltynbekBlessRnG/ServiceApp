@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { getAuthErrorMessage, normalizeEmail } from '../../lib/auth-validation';
+import { getCaptchaSiteKey } from '../../lib/captcha';
 import { supabase } from '../../lib/supabase';
 
 export default function ForgotPasswordScreen() {
@@ -12,7 +13,7 @@ export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const captchaRef = useRef<ConfirmHcaptcha>(null);
-  const captchaSiteKey = process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY?.trim();
+  const captchaSiteKey = getCaptchaSiteKey();
 
   const submit = async (captchaToken?: string) => {
     const normalized = normalizeEmail(email);
