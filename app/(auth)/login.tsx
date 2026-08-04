@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { getAuthErrorMessage, normalizeEmail } from '../../lib/auth-validation';
+import { getCaptchaSiteKey } from '../../lib/captcha';
 
 export default function LoginScreen() {
   const { theme } = useTheme();
@@ -20,7 +21,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const captchaRef = useRef<ConfirmHcaptcha>(null);
-  const captchaSiteKey = process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY?.trim();
+  const captchaSiteKey = getCaptchaSiteKey();
 
   async function signInWithEmail(captchaToken?: string) {
     setLoading(true);
