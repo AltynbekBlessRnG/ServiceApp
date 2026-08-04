@@ -16,10 +16,11 @@ import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
 import { showToast } from '../../components/AppToast';
 import { useAuth } from '../../providers/AuthProvider';
+import { ProviderVerificationBanner } from '../../components/ProviderVerificationBanner';
 
 export default function SpecialistHome() {
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, providerVerificationStatus } = useAuth();
   const insets = useSafeAreaInsets();
   
   const [bookings, setBookings] = useState<any[]>([]);
@@ -175,6 +176,8 @@ export default function SpecialistHome() {
             </TouchableOpacity>
         </View>
       </View>
+
+      <ProviderVerificationBanner status={providerVerificationStatus} />
 
       {loading ? (
         <ActivityIndicator size="large" color="#10B981" style={{ marginTop: 50 }} />

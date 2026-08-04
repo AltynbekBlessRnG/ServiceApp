@@ -1,7 +1,8 @@
 import { Button, CheckBox, Icon, Input, Text, useTheme } from '@rneui/themed';
+import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -16,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { openLegalDocument } from '../../lib/legal';
+import { getAuthErrorMessage, normalizeEmail, validateRegistrationPassword } from '../../lib/auth-validation';
 
 const KZ_CITIES = [
   'Алматы',
@@ -47,13 +49,16 @@ export default function RegisterScreen() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [fullName, setFullName] = useState('');
   const [city, setCity] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [acceptedLegal, setAcceptedLegal] = useState(false);
+  const captchaRef = useRef<ConfirmHcaptcha>(null);
+  const captchaSiteKey = process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY?.trim();
 
-  async function signUpWithEmail() {
+  async function signUpWithEmail(captchaToken?: string) {
     if (!fullName.trim()) {
       return Alert.alert('Ошибка', 'Введите ваше имя');
     }
@@ -61,8 +66,16 @@ export default function RegisterScreen() {
     if (!city) {
       return Alert.alert('Ошибка', 'Пожалуйста, выберите ваш город');
     }
-    if (!email.trim() || password.length < 8) {
-      return Alert.alert('Ошибка', 'Введите email и пароль не короче 8 символов');
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
+      return Alert.alert('Ошибка', 'Введите корректный email');
+    }
+    const passwordError = validateRegistrationPassword(password);
+    if (passwordError) {
+      return Alert.alert('Ненадёжный пароль', passwordError);
+    }
+    if (password !== passwordConfirmation) {
+      return Alert.alert('Ошибка', 'Пароли не совпадают');
     }
     if (!acceptedLegal) {
       return Alert.alert('Нужно согласие', 'Примите условия использования и политику конфиденциальности');
@@ -71,10 +84,11 @@ export default function RegisterScreen() {
     setLoading(true);
 
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
         emailRedirectTo: Linking.createURL('auth/callback'),
+        captchaToken,
         data: {
           full_name: fullName.trim(),
           city,
@@ -83,7 +97,7 @@ export default function RegisterScreen() {
     });
 
     if (error) {
-      Alert.alert('Ошибка', error.message);
+      Alert.alert('Ошибка', getAuthErrorMessage(error.message));
       setLoading(false);
       return;
     }
@@ -93,7 +107,15 @@ export default function RegisterScreen() {
       return;
     }
     setLoading(false);
-    router.replace({ pathname: '/verify-email', params: { email: email.trim() } });
+    router.replace({ pathname: '/verify-email', params: { email: normalizedEmail } });
+  }
+
+  function beginRegistration() {
+    if (captchaSiteKey) {
+      captchaRef.current?.show();
+      return;
+    }
+    void signUpWithEmail();
   }
 
   return (
@@ -162,6 +184,16 @@ export default function RegisterScreen() {
             leftIcon={<Icon name="lock" type="feather" size={18} color={theme.colors.grey3} />}
           />
 
+          <Input
+            placeholder="Повторите пароль"
+            label="Подтверждение пароля"
+            onChangeText={setPasswordConfirmation}
+            value={passwordConfirmation}
+            secureTextEntry
+            autoCapitalize="none"
+            leftIcon={<Icon name="shield" type="feather" size={18} color={theme.colors.grey3} />}
+          />
+
           <CheckBox
             checked={acceptedLegal}
             onPress={() => setAcceptedLegal((value) => !value)}
@@ -180,8 +212,8 @@ export default function RegisterScreen() {
           <Button
             title="Зарегистрироваться"
             loading={loading}
-            disabled={!acceptedLegal}
-            onPress={signUpWithEmail}
+            disabled={!acceptedLegal || loading}
+            onPress={beginRegistration}
             buttonStyle={{ backgroundColor: theme.colors.primary, borderRadius: 16, height: 55, marginTop: 10 }}
             titleStyle={{ fontWeight: '800' }}
           />
@@ -236,6 +268,25 @@ export default function RegisterScreen() {
           </View>
         </View>
       </Modal>
+
+      {captchaSiteKey ? (
+        <ConfirmHcaptcha
+          ref={captchaRef}
+          siteKey={captchaSiteKey}
+          size="normal"
+          baseUrl="https://hcaptcha.com"
+          languageCode="ru"
+          onMessage={(event) => {
+            const result = event?.nativeEvent?.data;
+            if (event.success && result) {
+              captchaRef.current?.hide();
+              void signUpWithEmail(result).finally(() => event.markUsed?.());
+            } else if (result === 'challenge-closed') {
+              captchaRef.current?.hide();
+            }
+          }}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }

@@ -33,7 +33,7 @@ export default function AdminDashboard() {
     setLoading(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, provider_verifications(status, submitted_at, review_note)')
       .order('created_at', { ascending: false });
 
     if (error) Alert.alert('Ошибка', error.message);
@@ -64,8 +64,40 @@ export default function AdminDashboard() {
     else setReports((current) => current.filter((report) => report.id !== reportId));
   }
 
+  async function reviewProvider(providerId: string, status: 'approved' | 'rejected') {
+    const { error } = await supabase.rpc('admin_review_provider', {
+      p_provider_id: providerId,
+      p_status: status,
+      p_note: status === 'approved' ? 'Профиль подтверждён' : 'Профиль требует исправлений',
+    });
+    if (error) {
+      Alert.alert('Ошибка проверки', error.message);
+      return;
+    }
+    await fetchUsers();
+  }
+
+  const pendingProviders = users.filter((user) => user.provider_verifications?.status === 'pending');
+
   const moderationQueue = (
     <View style={styles.moderationSection}>
+      <Text style={styles.moderationTitle}>Проверка исполнителей ({pendingProviders.length})</Text>
+      {pendingProviders.length === 0 ? (
+        <Text style={styles.emptyQueue}>Новых анкет нет</Text>
+      ) : pendingProviders.map((provider) => (
+        <View key={provider.id} style={styles.reportCard}>
+          <Text style={styles.reportType}>{provider.role === 'venue' ? 'Заведение' : 'Специалист'} · {provider.city || 'город не указан'}</Text>
+          <Text style={styles.providerName}>{provider.full_name || 'Без имени'}</Text>
+          <View style={styles.reportActions}>
+            <TouchableOpacity style={[styles.reportButton, styles.hideButton]} onPress={() => reviewProvider(provider.id, 'rejected')}>
+              <Text style={styles.reportButtonText}>На доработку</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.reportButton, styles.approveButton]} onPress={() => reviewProvider(provider.id, 'approved')}>
+              <Text style={styles.reportButtonText}>Одобрить</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ))}
       <Text style={styles.moderationTitle}>Модерация ({reports.length})</Text>
       {reports.length === 0 ? (
         <Text style={styles.emptyQueue}>Открытых жалоб нет</Text>
@@ -100,6 +132,11 @@ export default function AdminDashboard() {
           {item.role === 'client' ? 'Клиент' : item.role === 'specialist' ? 'Специалист' : item.role === 'venue' ? 'Заведение' : 'Не выбран'} • {item.city || 'Город скрыт'}
         </Text>
         <Text style={{ color: theme.colors.grey3, fontSize: 10 }}>ID: {item.id.slice(0, 8)}...</Text>
+        {item.provider_verifications?.status && (
+          <Text style={{ color: item.provider_verifications.status === 'approved' ? '#10B981' : item.provider_verifications.status === 'rejected' ? '#F6465D' : '#F0B90B', fontSize: 10, fontWeight: '800', marginTop: 3 }}>
+            {item.provider_verifications.status === 'approved' ? 'ПРОВЕРЕН' : item.provider_verifications.status === 'rejected' ? 'НА ДОРАБОТКЕ' : 'ОЖИДАЕТ ПРОВЕРКИ'}
+          </Text>
+        )}
       </View>
       
       <TouchableOpacity 
@@ -158,10 +195,12 @@ const styles = StyleSheet.create({
   reportCard: { backgroundColor: '#1E2329', borderColor: '#2B3139', borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 10 },
   reportType: { color: '#F0B90B', fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
   reportReason: { color: '#FAFAFA', fontSize: 14, marginTop: 7 },
+  providerName: { color: '#FAFAFA', fontSize: 16, fontWeight: '800', marginTop: 7 },
   reportActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
   reportButton: { flex: 1, alignItems: 'center', padding: 10, borderRadius: 9 },
   dismissButton: { backgroundColor: '#2B3139' },
   hideButton: { backgroundColor: '#F6465D' },
+  approveButton: { backgroundColor: '#10B981' },
   reportButtonText: { color: '#FAFAFA', fontWeight: '700' },
   usersTitle: { color: '#FAFAFA', fontSize: 18, fontWeight: '800', marginTop: 16 },
 });

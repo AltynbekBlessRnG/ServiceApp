@@ -12,6 +12,7 @@ type AuthContextType = {
   role: AppRole;
   isAdmin: boolean;
   isBanned: boolean;
+  providerVerificationStatus: 'pending' | 'approved' | 'rejected' | null;
   refreshAuthorization: () => Promise<void>;
 };
 
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   isAdmin: false,
   isBanned: false,
+  providerVerificationStatus: null,
   refreshAuthorization: async () => {},
 });
 
@@ -34,22 +36,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<AppRole>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
+  const [providerVerificationStatus, setProviderVerificationStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
 
   async function loadAuthorization(userId?: string) {
     if (!userId) {
       setRole(null);
       setIsAdmin(false);
       setIsBanned(false);
+      setProviderVerificationStatus(null);
       return;
     }
-    const [{ data: profile, error }, { data: admin }] = await Promise.all([
+    const [{ data: profile, error }, { data: admin }, { data: verification }] = await Promise.all([
       supabase.from('profiles').select('role, is_banned').eq('id', userId).maybeSingle(),
       supabase.rpc('is_admin'),
+      supabase.from('provider_verifications').select('status').eq('provider_id', userId).maybeSingle(),
     ]);
     if (error) throw error;
     setRole((profile?.role as AppRole) || null);
     setIsBanned(Boolean(profile?.is_banned));
     setIsAdmin(Boolean(admin));
+    setProviderVerificationStatus(verification?.status ?? null);
   }
 
   async function refreshAuthorization() {
@@ -117,6 +123,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [session?.user.id]);
 
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId) return;
+    const channel = supabase
+      .channel(`provider-verification:${userId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'provider_verifications',
+        filter: `provider_id=eq.${userId}`,
+      }, (payload) => {
+        const next = payload.eventType === 'DELETE' ? null : payload.new.status;
+        setProviderVerificationStatus(next === 'pending' || next === 'approved' || next === 'rejected' ? next : null);
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [session?.user.id]);
+
   return (
     <AuthContext.Provider value={{
       session,
@@ -126,6 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role,
       isAdmin,
       isBanned,
+      providerVerificationStatus,
       refreshAuthorization,
     }}>
       {children}

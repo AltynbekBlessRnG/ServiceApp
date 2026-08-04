@@ -1,6 +1,7 @@
 import { Button, Input, Text, useTheme } from '@rneui/themed';
+import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -11,25 +12,40 @@ import {
   View,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
+import { getAuthErrorMessage, normalizeEmail } from '../../lib/auth-validation';
 
 export default function LoginScreen() {
   const { theme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const captchaRef = useRef<ConfirmHcaptcha>(null);
+  const captchaSiteKey = process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY?.trim();
 
-  async function signInWithEmail() {
+  async function signInWithEmail(captchaToken?: string) {
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email: normalizeEmail(email),
+      password,
+      options: { captchaToken },
+    });
 
     if (error) {
-      Alert.alert('Ошибка входа', error.message);
+      Alert.alert('Ошибка входа', getAuthErrorMessage(error.message));
     } else {
       router.replace('/');
     }
 
     setLoading(false);
+  }
+
+  function beginSignIn() {
+    if (captchaSiteKey) {
+      captchaRef.current?.show();
+      return;
+    }
+    void signInWithEmail();
   }
 
   return (
@@ -69,7 +85,7 @@ export default function LoginScreen() {
             autoCapitalize="none"
             inputStyle={{ color: theme.colors.black }}
           />
-          <Button title="Войти" loading={loading} onPress={signInWithEmail} buttonStyle={styles.button} />
+          <Button title="Войти" loading={loading} disabled={loading} onPress={beginSignIn} buttonStyle={styles.button} />
           <TouchableOpacity onPress={() => router.push('/forgot-password')} style={styles.linkContainer}>
             <Text style={styles.linkText}>Забыли пароль?</Text>
           </TouchableOpacity>
@@ -78,6 +94,24 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      {captchaSiteKey ? (
+        <ConfirmHcaptcha
+          ref={captchaRef}
+          siteKey={captchaSiteKey}
+          size="normal"
+          baseUrl="https://hcaptcha.com"
+          languageCode="ru"
+          onMessage={(event) => {
+            const result = event?.nativeEvent?.data;
+            if (event.success && result) {
+              captchaRef.current?.hide();
+              void signInWithEmail(result).finally(() => event.markUsed?.());
+            } else if (result === 'challenge-closed') {
+              captchaRef.current?.hide();
+            }
+          }}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
