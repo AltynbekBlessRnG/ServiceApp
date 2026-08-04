@@ -16,7 +16,7 @@ const ALAKOL_ZONES = [
 ] as const;
 
 export default function EditVenueProfile() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, refreshAuthorization } = useAuth();
   const { theme } = useTheme();
 
   const [loading, setLoading] = useState(false);
@@ -199,6 +199,9 @@ export default function EditVenueProfile() {
         p_price_from: parseInt(priceFrom, 10) || 0,
       });
       if (servicesError) throw servicesError;
+      const { error: verificationError } = await supabase.rpc('submit_my_provider_verification');
+      if (verificationError) throw verificationError;
+      await refreshAuthorization();
       Alert.alert('Успех', 'Профиль объекта обновлен');
       router.back();
     } catch (error: any) {

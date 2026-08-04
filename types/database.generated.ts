@@ -611,6 +611,62 @@ export type Database = {
           },
         ]
       }
+      provider_verifications: {
+        Row: {
+          provider_id: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["provider_verification_status"]
+          submitted_at: string
+        }
+        Insert: {
+          provider_id: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["provider_verification_status"]
+          submitted_at?: string
+        }
+        Update: {
+          provider_id?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["provider_verification_status"]
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_verifications_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_verifications_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: true
+            referencedRelation: "provider_search_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_verifications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_verifications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "provider_search_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reports: {
         Row: {
           created_at: string
@@ -945,6 +1001,14 @@ export type Database = {
       }
     }
     Functions: {
+      admin_review_provider: {
+        Args: {
+          p_note?: string
+          p_provider_id: string
+          p_status: Database["public"]["Enums"]["provider_verification_status"]
+        }
+        Returns: undefined
+      }
       admin_set_user_banned: {
         Args: { p_banned: boolean; p_user_id: string }
         Returns: undefined
@@ -1079,6 +1143,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      submit_my_provider_verification: {
+        Args: never
+        Returns: Database["public"]["Enums"]["provider_verification_status"]
+      }
       transition_booking: {
         Args: {
           p_booking_id: string
@@ -1126,6 +1194,7 @@ export type Database = {
         | "completed"
       conversation_kind: "direct" | "category"
       provider_type: "specialist" | "venue"
+      provider_verification_status: "pending" | "approved" | "rejected"
       report_status: "open" | "reviewing" | "resolved" | "dismissed"
     }
     CompositeTypes: {
@@ -1268,6 +1337,7 @@ export const Constants = {
       ],
       conversation_kind: ["direct", "category"],
       provider_type: ["specialist", "venue"],
+      provider_verification_status: ["pending", "approved", "rejected"],
       report_status: ["open", "reviewing", "resolved", "dismissed"],
     },
   },

@@ -4,6 +4,7 @@ import { resolveHomeRoute } from '../lib/auth-routing';
 import { getPublicAppConfig, getRequiredEnv } from '../lib/env';
 import { canTransitionBooking, deduplicateProviders, formatPrice } from '../lib/domain';
 import { getFallbackSearchIntent } from '../lib/search-intent';
+import { getAuthErrorMessage, normalizeEmail, validateRegistrationPassword } from '../lib/auth-validation';
 
 function run(name: string, fn: () => void) {
   try {
@@ -94,4 +95,17 @@ run('uses local search intent when AI is unavailable', () => {
     intent: 'general_question',
     serviceSlugs: [],
   });
+});
+
+run('normalizes email addresses before authentication', () => {
+  assert.equal(normalizeEmail('  User@Example.COM '), 'user@example.com');
+});
+
+run('requires a strong registration password', () => {
+  assert.equal(validateRegistrationPassword('weakpass'), 'Добавьте заглавную латинскую букву');
+  assert.equal(validateRegistrationPassword('StrongPass1'), null);
+});
+
+run('translates common authentication errors', () => {
+  assert.equal(getAuthErrorMessage('Email not confirmed'), 'Сначала подтвердите email по ссылке из письма');
 });

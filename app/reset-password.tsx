@@ -2,6 +2,7 @@ import { Button, Input, Text, useTheme } from '@rneui/themed';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { getAuthErrorMessage, validateRegistrationPassword } from '../lib/auth-validation';
 import { supabase } from '../lib/supabase';
 
 export default function ResetPasswordScreen() {
@@ -11,13 +12,13 @@ export default function ResetPasswordScreen() {
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
-    if (password.length < 8 || password !== confirmation) {
-      return Alert.alert('Ошибка', 'Пароли должны совпадать и содержать минимум 8 символов');
-    }
+    const passwordError = validateRegistrationPassword(password);
+    if (passwordError) return Alert.alert('Ненадёжный пароль', passwordError);
+    if (password !== confirmation) return Alert.alert('Ошибка', 'Пароли не совпадают');
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
-    if (error) return Alert.alert('Ошибка', error.message);
+    if (error) return Alert.alert('Ошибка', getAuthErrorMessage(error.message));
     Alert.alert('Готово', 'Пароль обновлён', [{ text: 'Продолжить', onPress: () => router.replace('/') }]);
   };
 

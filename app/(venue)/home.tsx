@@ -7,10 +7,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
+import { ProviderVerificationBanner } from '../../components/ProviderVerificationBanner';
 
 export default function VenueHome() {
   const { theme } = useTheme();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, providerVerificationStatus } = useAuth();
   const insets = useSafeAreaInsets();
   
   const [bookings, setBookings] = useState<any[]>([]);
@@ -120,6 +121,8 @@ export default function VenueHome() {
              <Icon name="settings" type="feather" size={22} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
+
+      <ProviderVerificationBanner status={providerVerificationStatus} />
 
       <FlatList
         data={bookings}

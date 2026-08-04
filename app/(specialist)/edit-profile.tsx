@@ -15,7 +15,7 @@ const ALAKOL_ZONES = [
 ] as const;
 
 export default function EditProfileScreen() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, refreshAuthorization } = useAuth();
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -126,6 +126,10 @@ export default function EditProfileScreen() {
         p_price_from: parseInt(price, 10) || 0,
       });
       if (servicesError) throw servicesError;
+
+      const { error: verificationError } = await supabase.rpc('submit_my_provider_verification');
+      if (verificationError) throw verificationError;
+      await refreshAuthorization();
 
       Alert.alert('Успех', 'Анкета мастера обновлена');
       router.back();
