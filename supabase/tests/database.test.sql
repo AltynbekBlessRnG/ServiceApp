@@ -14,7 +14,7 @@ SELECT policies_are('public', 'provider_verifications', ARRAY['provider_verifica
 SELECT policies_are(
   'public',
   'portfolio_likes',
-  ARRAY['portfolio_likes_delete_own', 'portfolio_likes_insert_own', 'portfolio_likes_read'],
+  ARRAY['portfolio_likes_delete_own', 'portfolio_likes_insert_own', 'portfolio_likes_read_own'],
   'portfolio likes expose the expected policies'
 );
 
