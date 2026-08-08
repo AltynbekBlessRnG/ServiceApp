@@ -1,7 +1,7 @@
 import { Button, Text } from '@rneui/themed';
 import { Redirect } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import type { AppRole } from '../lib/auth-routing';
+import { resolveHomeRoute, type AppRole } from '../lib/auth-routing';
 import { signOutSecurely } from '../lib/auth-actions';
 import { useAuth } from '../providers/AuthProvider';
 
@@ -29,8 +29,8 @@ export function RoleGuard({
       </View>
     );
   }
-  if (requireAdmin && !isAdmin) return <Redirect href="/" />;
-  if (requiredRole && role !== requiredRole) return <Redirect href="/" />;
+  if (requireAdmin && !isAdmin) return <Redirect href={resolveHomeRoute(role)} />;
+  if (requiredRole && role !== requiredRole) return <Redirect href={resolveHomeRoute(role)} />;
   return children;
 }
 
