@@ -33,8 +33,9 @@ export default function VenueHome() {
 
   const fetchBookings = React.useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase.from('bookings').select(`*, client:profiles!client_id (full_name, avatar_url)`).eq('provider_id', user.id).order('created_at', { ascending: false });
-    setBookings(data || []);
+    const { data, error } = await supabase.from('bookings').select(`*, client:profiles!client_id (full_name, avatar_url)`).eq('provider_id', user.id).order('created_at', { ascending: false });
+    if (error) Alert.alert('Не удалось загрузить брони', error.message);
+    else setBookings(data || []);
     setRefreshing(false);
   }, [user]);
 
@@ -54,6 +55,7 @@ export default function VenueHome() {
 
   const renderItem = ({ item }: { item: any }) => {
     const startsAt = new Date(item.starts_at);
+    const canComplete = startsAt.getTime() <= Date.now();
     const date = item.ends_at
       ? `${startsAt.toLocaleDateString('ru-RU')} — ${new Date(item.ends_at).toLocaleDateString('ru-RU')}`
       : startsAt.toLocaleDateString('ru-RU');
@@ -98,8 +100,8 @@ export default function VenueHome() {
         )}
         {item.status === 'confirmed' && (
             <View style={styles.actionRow}>
-                <TouchableOpacity style={[styles.btn, { backgroundColor: '#3B82F6', flex: 1 }]} onPress={() => updateStatus(item.id, 'completed')}>
-                    <Text style={{ color: '#fff', fontWeight: '800' }}>ЗАВЕРШИТЬ</Text>
+                <TouchableOpacity disabled={!canComplete} style={[styles.btn, { backgroundColor: canComplete ? '#3B82F6' : theme.colors.grey1, flex: 1 }]} onPress={() => updateStatus(item.id, 'completed')}>
+                    <Text style={{ color: canComplete ? '#fff' : theme.colors.grey2, fontWeight: '800' }}>{canComplete ? 'ЗАВЕРШИТЬ' : 'ДОЖДИТЕСЬ НАЧАЛА'}</Text>
                 </TouchableOpacity>
             </View>
         )}

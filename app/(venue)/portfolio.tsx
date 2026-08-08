@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '../../components/AppHeader';
 import { supabase } from '../../lib/supabase';
 import { uploadFileToSupabase } from '../../lib/uploader';
+import { removePublicStorageFiles } from '../../lib/storage-cleanup';
 import { useAuth } from '../../providers/AuthProvider';
 
 const { width } = Dimensions.get('window');
@@ -33,13 +34,14 @@ export default function VenuePortfolioScreen() {
 
   const fetchPortfolio = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
         .from('portfolio_items')
         .select('*')
         .eq('owner_id', user.id)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
-    if (data) setItems(data);
+    if (error) Alert.alert('Не удалось загрузить галерею', error.message);
+    else setItems(data || []);
     setLoading(false);
   }, [user]);
 
@@ -82,31 +84,54 @@ export default function VenuePortfolioScreen() {
 
   async function togglePin(item: any) {
       const newValue = !item.is_pinned;
+      const previousItems = items;
+      const previousSelectedItem = selectedItem;
       const updatedItem = { ...item, is_pinned: newValue };
       setSelectedItem(updatedItem);
       const tempItems = items.map(i => i.id === item.id ? updatedItem : i);
       tempItems.sort((a, b) => (Number(b.is_pinned) - Number(a.is_pinned)) || (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
       setItems(tempItems);
-      await supabase.from('portfolio_items').update({ is_pinned: newValue }).eq('id', item.id);
+      const { error } = await supabase.from('portfolio_items').update({ is_pinned: newValue }).eq('id', item.id);
+      if (error) {
+          setItems(previousItems);
+          setSelectedItem(previousSelectedItem);
+          Alert.alert('Не удалось закрепить фото', error.message);
+      }
   }
 
   async function makeHero(item: any) {
       if (!user) return;
+      const previousItems = items;
+      const previousSelectedItem = selectedItem;
       const newItems = items.map(i => ({ ...i, is_hero: i.id === item.id }));
       setItems(newItems);
       setSelectedItem({ ...item, is_hero: true });
-      await supabase.from('portfolio_items').update({ is_hero: false }).eq('owner_id', user.id);
-      await supabase.from('portfolio_items').update({ is_hero: true }).eq('id', item.id);
+      const { error } = await supabase.rpc('set_my_portfolio_hero', { p_item_id: item.id });
+      if (error) {
+          setItems(previousItems);
+          setSelectedItem(previousSelectedItem);
+          Alert.alert('Не удалось обновить главное фото', error.message);
+          return;
+      }
       Alert.alert("Обложка обновлена", "Это фото будет показано в карточке заведения.");
   }
 
-  async function deleteItem(id: string) {
+  async function deleteItem(item: any) {
     Alert.alert("Удалить?", "Фото исчезнет навсегда.", [
         { text: "Отмена", style: "cancel" },
         { text: "Удалить", style: "destructive", onPress: async () => {
-            await supabase.from('portfolio_items').delete().eq('id', id);
-            setItems(prev => prev.filter(item => item.id !== id));
+            const { error } = await supabase.from('portfolio_items').delete().eq('id', item.id);
+            if (error) {
+                Alert.alert('Не удалось удалить фото', error.message);
+                return;
+            }
+            setItems(prev => prev.filter(current => current.id !== item.id));
             setSelectedItem(null);
+            try {
+                await removePublicStorageFiles('portfolio', [item.file_url, item.thumbnail_url]);
+            } catch (storageError) {
+                Alert.alert('Фото удалено из профиля', storageError instanceof Error ? `Не удалось очистить Storage: ${storageError.message}` : 'Не удалось очистить Storage');
+            }
         }}
     ]);
   }
@@ -199,7 +224,7 @@ export default function VenuePortfolioScreen() {
                       </TouchableOpacity>
 
                       <View style={{ flexDirection: 'row', marginTop: 20, gap: 10 }}>
-                          <TouchableOpacity style={[styles.btn, { backgroundColor: 'rgba(255, 71, 87, 0.1)', flex: 1 }]} onPress={() => deleteItem(selectedItem?.id)}>
+                          <TouchableOpacity style={[styles.btn, { backgroundColor: 'rgba(255, 71, 87, 0.1)', flex: 1 }]} onPress={() => deleteItem(selectedItem)}>
                               <Icon name="trash-2" type="feather" color="#FF4757" size={18} style={{marginRight: 5}} />
                               <Text style={{ color: '#FF4757', fontWeight: 'bold' }}>Удалить</Text>
                           </TouchableOpacity>
