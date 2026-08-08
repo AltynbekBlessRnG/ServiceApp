@@ -89,7 +89,7 @@ export default function SpecialistDetailScreen() {
           const marks: any = {};
           busyReq.data.forEach((d: any) => {
             const date = new Date(d.starts_at).toISOString().slice(0, 10);
-            marks[date] = { disabled: true, disableTouchEvent: true, marked: true, dotColor: '#F6465D' };
+            marks[date] = { marked: true, dotColor: '#F6465D' };
           });
           setBusyDates(marks);
       }
@@ -162,9 +162,16 @@ export default function SpecialistDetailScreen() {
   async function toggleFavorite() {
     haptics.medium();
     if (!user) return Alert.alert("Вход", "Сначала авторизуйтесь");
-    setIsFavorite(!isFavorite); // Мгновенный UI отклик
-    if (isFavorite) await supabase.from('favorites').delete().eq('user_id', user.id).eq('target_id', targetId);
-    else await supabase.from('favorites').insert({ user_id: user.id, target_id: targetId });
+    const previousValue = isFavorite;
+    setIsFavorite(!previousValue);
+    const { error } = previousValue
+      ? await supabase.from('favorites').delete().eq('user_id', user.id).eq('target_id', targetId)
+      : await supabase.from('favorites').insert({ user_id: user.id, target_id: targetId });
+    if (error) {
+      setIsFavorite(previousValue);
+      haptics.error();
+      showToast({ type: 'error', title: 'Не удалось обновить избранное', message: error.message });
+    }
   }
 
   // 🔥 МЫ УБРАЛИ БЛОКИРУЮЩИЙ RETURN. ЭКРАН РЕНДЕРИТСЯ СРАЗУ.

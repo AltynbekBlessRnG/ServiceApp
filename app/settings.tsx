@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 import { uploadFileToSupabase } from '../lib/uploader';
 import { openLegalDocument } from '../lib/legal';
 import { signOutSecurely } from '../lib/auth-actions';
+import { removePublicStorageFiles } from '../lib/storage-cleanup';
 import { useAuth } from '../providers/AuthProvider';
 
 const SettingItem = ({ icon, title, onPress, color, theme }: any) => (
@@ -71,10 +72,18 @@ export default function SettingsScreen() {
     if (!result.canceled && result.assets[0].uri) {
       setLoading(true);
       try {
+        const previousAvatarUrl = profile?.avatar_url as string | null | undefined;
         const fileName = `${user.id}/avatar_${Date.now()}.jpg`;
         const publicUrl = await uploadFileToSupabase('avatars', result.assets[0].uri, fileName);
-        await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+        const { error } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+        if (error) {
+          await removePublicStorageFiles('avatars', [publicUrl]).catch(() => undefined);
+          throw error;
+        }
         setProfile({ ...profile, avatar_url: publicUrl });
+        await removePublicStorageFiles('avatars', [previousAvatarUrl]).catch((cleanupError) => {
+          console.warn('Old avatar cleanup failed:', cleanupError);
+        });
       } catch (e: any) {
         Alert.alert("Ошибка", e.message);
       } finally {

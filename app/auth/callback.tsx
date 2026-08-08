@@ -1,21 +1,11 @@
 import { Text } from '@rneui/themed';
+import type { EmailOtpType } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { supabase } from '../../lib/supabase';
-
-function readTokens(url: string) {
-  const fragment = url.includes('#') ? url.slice(url.indexOf('#') + 1) : '';
-  const query = url.includes('?') ? url.slice(url.indexOf('?') + 1).split('#')[0] : '';
-  const values = new URLSearchParams(fragment || query);
-  return {
-    code: values.get('code'),
-    accessToken: values.get('access_token'),
-    refreshToken: values.get('refresh_token'),
-    type: values.get('type'),
-  };
-}
+import { readAuthCallbackTokens } from '../../lib/auth-callback';
 
 export default function AuthCallbackScreen() {
   const url = Linking.useURL();
@@ -26,9 +16,15 @@ export default function AuthCallbackScreen() {
     let active = true;
     void (async () => {
       try {
-        const tokens = readTokens(url);
+        const tokens = readAuthCallbackTokens(url);
         if (tokens.code) {
           const { error } = await supabase.auth.exchangeCodeForSession(tokens.code);
+          if (error) throw error;
+        } else if (tokens.tokenHash && tokens.type) {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokens.tokenHash,
+            type: tokens.type as EmailOtpType,
+          });
           if (error) throw error;
         } else if (tokens.accessToken && tokens.refreshToken) {
           const { error } = await supabase.auth.setSession({

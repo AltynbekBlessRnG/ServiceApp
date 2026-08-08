@@ -45,13 +45,14 @@ export default function SpecialistHome() {
   const fetchBookings = useCallback(async () => {
     if (!user) return;
     
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('bookings')
       .select(`*, client:profiles!client_id (full_name, avatar_url)`)
       .eq('provider_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (data) setBookings(data);
+    if (error) showToast({ type: 'error', title: 'Не удалось загрузить заказы', message: error.message });
+    else setBookings(data || []);
     setLoading(false);
     setRefreshing(false);
   }, [user]);
@@ -94,6 +95,7 @@ export default function SpecialistHome() {
   const renderItem = ({ item }: { item: any }) => {
     const isPending = item.status === 'pending';
     const startsAt = new Date(item.starts_at);
+    const canComplete = startsAt.getTime() <= Date.now();
     const date = startsAt.toLocaleDateString('ru-RU');
     const time = startsAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
@@ -150,9 +152,9 @@ export default function SpecialistHome() {
                     </TouchableOpacity>
                 </>
             ) : item.status === 'confirmed' && (
-                <TouchableOpacity style={[styles.btn, { backgroundColor: '#10B981', flex: 1 }]} onPress={() => updateStatus(item.id, 'completed')}>
+                <TouchableOpacity disabled={!canComplete} style={[styles.btn, { backgroundColor: canComplete ? '#10B981' : theme.colors.grey1, flex: 1 }]} onPress={() => updateStatus(item.id, 'completed')}>
                     <Icon name="check" type="feather" color="#fff" size={18} style={{marginRight: 8}} />
-                    <Text style={{ color: '#fff', fontWeight: '800' }}>ЗАВЕРШИТЬ</Text>
+                    <Text style={{ color: canComplete ? '#fff' : theme.colors.grey2, fontWeight: '800' }}>{canComplete ? 'ЗАВЕРШИТЬ' : 'ДОЖДИТЕСЬ НАЧАЛА'}</Text>
                 </TouchableOpacity>
             )}
         </View>

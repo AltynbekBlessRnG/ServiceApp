@@ -1,7 +1,7 @@
 import { Button, Icon, Text, useTheme } from '@rneui/themed';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '../../components/AppHeader';
 import { UserAvatar } from '../../components/UserAvatar';
@@ -34,17 +34,40 @@ export default function ClientOrdersScreen() {
 
   const fetchOrders = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('bookings')
       .select('id, starts_at, ends_at, status, message, kind, guest_count, provider:profiles!provider_id (id, full_name, avatar_url)')
       .eq('client_id', user.id)
       .order('created_at', { ascending: false });
-    if (data) setOrders(data as unknown as BookingItem[]);
+    if (error) Alert.alert('Не удалось загрузить брони', error.message);
+    else setOrders((data || []) as unknown as BookingItem[]);
     setLoading(false);
     setRefreshing(false);
   }, [user]);
 
   useFocusEffect(useCallback(() => { void fetchOrders(); }, [fetchOrders]));
+
+  const cancelBooking = useCallback((booking: BookingItem) => {
+    Alert.alert('Отменить бронь?', 'Исполнитель получит уведомление об отмене.', [
+      { text: 'Оставить', style: 'cancel' },
+      {
+        text: 'Отменить бронь',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await supabase.rpc('transition_booking', {
+            p_booking_id: booking.id,
+            p_status: 'cancelled',
+          });
+          if (error) {
+            Alert.alert('Не удалось отменить', error.message);
+            return;
+          }
+          setOrders((current) => current.map((item) => item.id === booking.id ? { ...item, status: 'cancelled' } : item));
+          setSelectedOrder(null);
+        },
+      },
+    ]);
+  }, []);
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -179,6 +202,15 @@ export default function ClientOrdersScreen() {
                     },
                   });
                 }}
+                containerStyle={{ marginTop: 12 }}
+              />
+            ) : null}
+            {selectedOrder && (selectedOrder.status === 'pending' || selectedOrder.status === 'confirmed') ? (
+              <Button
+                title="Отменить бронь"
+                type="clear"
+                titleStyle={{ color: theme.colors.error }}
+                onPress={() => cancelBooking(selectedOrder)}
                 containerStyle={{ marginTop: 12 }}
               />
             ) : null}

@@ -17,29 +17,43 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../providers/AuthProvider';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ReelsScreen() {
+  const { user } = useAuth();
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   
   const [videos, setVideos] = useState<any[]>([]);
   const [currentId, setCurrentId] = useState<any>(null);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Расчет высоты (Экран минус меню снизу)
   const BOTTOM_TAB_HEIGHT = 60 + (Platform.OS === 'ios' ? insets.bottom : 0); // Чуть подправил для Android
   const ITEM_HEIGHT = SCREEN_HEIGHT - BOTTOM_TAB_HEIGHT;
 
   const fetchReels = useCallback(async () => {
-      // Берем видео, у которых стоит галочка "В ленте"
-      const { data } = await supabase
-        .from('portfolio_items')
-        .select('*, profiles!owner_id(full_name, avatar_url)')
-        .eq('file_type', 'video')
-        .eq('in_feed', true) 
-        .order('created_at', { ascending: false });
+      const [{ data, error }, likesResult] = await Promise.all([
+        supabase
+          .from('portfolio_items')
+          .select('*, profiles!owner_id(full_name, avatar_url)')
+          .eq('file_type', 'video')
+          .eq('in_feed', true)
+          .order('created_at', { ascending: false }),
+        user
+          ? supabase.from('portfolio_likes').select('item_id').eq('user_id', user.id)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (error || likesResult.error) {
+          setVideos([]);
+          setLoadError(error?.message || likesResult.error?.message || 'Не удалось загрузить ленту');
+          return;
+      }
+      setLoadError(null);
+      setLikedIds(new Set((likesResult.data || []).map((like) => like.item_id)));
         
       if (data && data.length > 0) {
           setVideos(data);
@@ -47,7 +61,7 @@ export default function ReelsScreen() {
       } else {
           setVideos([]);
       }
-  }, []);
+  }, [user]);
 
   useFocusEffect(useCallback(() => {
       void fetchReels();
@@ -60,13 +74,26 @@ export default function ReelsScreen() {
     }
   }).current;
 
-  const toggleLike = (item: any) => {
-    setLikedIds(prev => {
-        const next = new Set(prev);
-        if (next.has(item.id)) next.delete(item.id);
-        else next.add(item.id);
-        return next;
+  const toggleLike = async (item: any) => {
+    if (!user) return;
+    const wasLiked = likedIds.has(item.id);
+    setLikedIds((current) => {
+      const next = new Set(current);
+      if (wasLiked) next.delete(item.id);
+      else next.add(item.id);
+      return next;
     });
+    const { error } = wasLiked
+      ? await supabase.from('portfolio_likes').delete().eq('item_id', item.id).eq('user_id', user.id)
+      : await supabase.from('portfolio_likes').insert({ item_id: item.id, user_id: user.id });
+    if (error) {
+      setLikedIds((current) => {
+        const next = new Set(current);
+        if (wasLiked) next.add(item.id);
+        else next.delete(item.id);
+        return next;
+      });
+    }
   };
 
   const handleShare = async (item: any) => {
@@ -118,9 +145,9 @@ export default function ReelsScreen() {
 
                 {/* ПРАВАЯ ЧАСТЬ: КНОПКИ */}
                 <View style={styles.actionsColumn}>
-                    <TouchableOpacity style={styles.actionBtn} onPress={() => toggleLike(item)}>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => void toggleLike(item)}>
                         <Icon name="heart" type="font-awesome" color={isLiked ? "#FF4757" : "white"} size={30} style={styles.shadow} />
-                        <Text style={[styles.actionText, isLiked && { color: '#FF4757' }]}>Like</Text>
+                        <Text style={[styles.actionText, isLiked && { color: '#FF4757' }]}>Нравится</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity 
@@ -167,7 +194,9 @@ export default function ReelsScreen() {
         ListEmptyComponent={
             <View style={styles.empty}>
                 <Icon name="film" type="feather" size={60} color="#333" />
-                <Text style={{color: '#666', marginTop: 20}}>Нет видео в ленте</Text>
+                <Text style={{color: loadError ? '#F6465D' : '#666', marginTop: 20, textAlign: 'center'}}>
+                  {loadError || 'Нет видео в ленте'}
+                </Text>
             </View>
         }
       />

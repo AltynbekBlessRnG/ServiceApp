@@ -5,6 +5,8 @@ import { getPublicAppConfig, getRequiredEnv } from '../lib/env';
 import { canTransitionBooking, deduplicateProviders, formatPrice } from '../lib/domain';
 import { getFallbackSearchIntent } from '../lib/search-intent';
 import { getAuthErrorMessage, normalizeEmail, validateRegistrationPassword } from '../lib/auth-validation';
+import { readAuthCallbackTokens } from '../lib/auth-callback';
+import { getPublicStoragePath } from '../lib/storage-path';
 
 function run(name: string, fn: () => void) {
   try {
@@ -108,4 +110,28 @@ run('requires a strong registration password', () => {
 
 run('translates common authentication errors', () => {
   assert.equal(getAuthErrorMessage('Email not confirmed'), 'Сначала подтвердите email по ссылке из письма');
+});
+
+run('keeps recovery type when tokens arrive in different URL sections', () => {
+  assert.deepEqual(
+    readAuthCallbackTokens('taptym://auth/callback?type=recovery#access_token=a&refresh_token=b'),
+    { code: null, accessToken: 'a', refreshToken: 'b', tokenHash: null, type: 'recovery' },
+  );
+});
+
+run('reads token-hash recovery callbacks', () => {
+  assert.deepEqual(
+    readAuthCallbackTokens('taptym://auth/callback?token_hash=hash&type=recovery'),
+    { code: null, accessToken: null, refreshToken: null, tokenHash: 'hash', type: 'recovery' },
+  );
+});
+
+run('extracts an owned Storage path from a public URL', () => {
+  assert.equal(
+    getPublicStoragePath(
+      'https://example.supabase.co/storage/v1/object/public/portfolio/user%2Fphoto.jpg?download=1',
+      'portfolio',
+    ),
+    'user/photo.jpg',
+  );
 });
