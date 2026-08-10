@@ -4,7 +4,7 @@ import { resolveHomeRoute } from '../lib/auth-routing';
 import { getPublicAppConfig, getRequiredEnv } from '../lib/env';
 import { canTransitionBooking, deduplicateProviders, formatPrice } from '../lib/domain';
 import { getFallbackSearchIntent } from '../lib/search-intent';
-import { getAuthErrorMessage, normalizeEmail, validateRegistrationPassword } from '../lib/auth-validation';
+import { getAuthErrorMessage, getRegistrationValidationError, normalizeEmail, validateRegistrationPassword } from '../lib/auth-validation';
 import { readAuthCallbackTokens } from '../lib/auth-callback';
 import { getPublicStoragePath } from '../lib/storage-path';
 
@@ -106,6 +106,16 @@ run('normalizes email addresses before authentication', () => {
 run('requires a strong registration password', () => {
   assert.equal(validateRegistrationPassword('weakpass'), 'Добавьте заглавную латинскую букву');
   assert.equal(validateRegistrationPassword('StrongPass1'), null);
+
+  assert.deepEqual(getRegistrationValidationError({
+    fullName: 'Алтынбек Темирхан', city: 'Алматы', email: 'test@example.com',
+    password: 'StrongPass1', passwordConfirmation: 'DifferentPass1', acceptedLegal: true,
+  }), { title: 'Пароли не совпадают', message: 'Повторно введите одинаковый пароль.' });
+
+  assert.equal(getRegistrationValidationError({
+    fullName: 'Алтынбек Темирхан', city: 'Алматы', email: 'test@example.com',
+    password: 'StrongPass1', passwordConfirmation: 'StrongPass1', acceptedLegal: true,
+  }), null);
 });
 
 run('translates common authentication errors', () => {
