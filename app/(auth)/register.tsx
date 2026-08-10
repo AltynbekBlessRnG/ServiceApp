@@ -1,11 +1,12 @@
-import { Button, CheckBox, Icon, Input, Text, useTheme } from '@rneui/themed';
+import { CheckBox, Icon, Input, Text, useTheme } from '@rneui/themed';
 import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
-  Alert,
+  ActivityIndicator,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,8 +18,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { openLegalDocument } from '../../lib/legal';
-import { getAuthErrorMessage, normalizeEmail, validateRegistrationPassword } from '../../lib/auth-validation';
+import { getAuthErrorMessage, getRegistrationValidationError, normalizeEmail } from '../../lib/auth-validation';
 import { getCaptchaSiteKey } from '../../lib/captcha';
+import { showToast } from '../../components/AppToast';
 
 const KZ_CITIES = [
   'Алматы',
@@ -56,31 +58,15 @@ export default function RegisterScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [acceptedLegal, setAcceptedLegal] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmationVisible, setConfirmationVisible] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
   const captchaRef = useRef<ConfirmHcaptcha>(null);
+  const captchaSubmittingRef = useRef(false);
   const captchaSiteKey = getCaptchaSiteKey();
 
   async function signUpWithEmail(captchaToken?: string) {
-    if (!fullName.trim()) {
-      return Alert.alert('Ошибка', 'Введите ваше имя');
-    }
-
-    if (!city) {
-      return Alert.alert('Ошибка', 'Пожалуйста, выберите ваш город');
-    }
     const normalizedEmail = normalizeEmail(email);
-    if (!normalizedEmail || !normalizedEmail.includes('@')) {
-      return Alert.alert('Ошибка', 'Введите корректный email');
-    }
-    const passwordError = validateRegistrationPassword(password);
-    if (passwordError) {
-      return Alert.alert('Ненадёжный пароль', passwordError);
-    }
-    if (password !== passwordConfirmation) {
-      return Alert.alert('Ошибка', 'Пароли не совпадают');
-    }
-    if (!acceptedLegal) {
-      return Alert.alert('Нужно согласие', 'Примите условия использования и политику конфиденциальности');
-    }
 
     setLoading(true);
 
@@ -98,7 +84,7 @@ export default function RegisterScreen() {
     });
 
     if (error) {
-      Alert.alert('Ошибка', getAuthErrorMessage(error.message));
+      showToast({ type: 'error', title: 'Регистрация не завершена', message: getAuthErrorMessage(error.message), duration: 5000 });
       setLoading(false);
       return;
     }
@@ -112,11 +98,28 @@ export default function RegisterScreen() {
   }
 
   function beginRegistration() {
+    const validationError = getRegistrationValidationError({
+      fullName,
+      city,
+      email,
+      password,
+      passwordConfirmation,
+      acceptedLegal,
+    });
+    if (validationError) {
+      showToast({ type: 'warning', ...validationError, duration: 4500 });
+      return;
+    }
+    Keyboard.dismiss();
     if (captchaSiteKey) {
       captchaRef.current?.show();
       return;
     }
     void signUpWithEmail();
+  }
+
+  function revealLowerForm() {
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 180);
   }
 
   return (
@@ -126,7 +129,9 @@ export default function RegisterScreen() {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        ref={scrollRef}
+        style={{ backgroundColor: theme.colors.background }}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 16) }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
       >
@@ -147,7 +152,7 @@ export default function RegisterScreen() {
           </View>
 
           <Input
-            placeholder="Иван Иванов"
+            placeholder="Ваше имя / название"
             label="ФИО / Название"
             onChangeText={setFullName}
             value={fullName}
@@ -181,8 +186,14 @@ export default function RegisterScreen() {
             label="Пароль"
             onChangeText={setPassword}
             value={password}
-            secureTextEntry
+            secureTextEntry={!passwordVisible}
+            onFocus={revealLowerForm}
             leftIcon={<Icon name="lock" type="feather" size={18} color={theme.colors.grey3} />}
+            rightIcon={
+              <TouchableOpacity onPress={() => setPasswordVisible((value) => !value)} hitSlop={10}>
+                <Icon name={passwordVisible ? 'eye-off' : 'eye'} type="feather" size={20} color={theme.colors.grey2} />
+              </TouchableOpacity>
+            }
           />
 
           <Input
@@ -190,9 +201,15 @@ export default function RegisterScreen() {
             label="Подтверждение пароля"
             onChangeText={setPasswordConfirmation}
             value={passwordConfirmation}
-            secureTextEntry
+            secureTextEntry={!confirmationVisible}
+            onFocus={revealLowerForm}
             autoCapitalize="none"
             leftIcon={<Icon name="shield" type="feather" size={18} color={theme.colors.grey3} />}
+            rightIcon={
+              <TouchableOpacity onPress={() => setConfirmationVisible((value) => !value)} hitSlop={10}>
+                <Icon name={confirmationVisible ? 'eye-off' : 'eye'} type="feather" size={20} color={theme.colors.grey2} />
+              </TouchableOpacity>
+            }
           />
 
           <CheckBox
@@ -201,23 +218,31 @@ export default function RegisterScreen() {
             title={
               <Text style={{ color: theme.colors.grey2, lineHeight: 20 }}>
                 Я принимаю{' '}
-                <Text style={{ color: theme.colors.primary }} onPress={() => void openLegalDocument('terms').catch((error) => Alert.alert('Документ недоступен', error.message))}>условия использования</Text>
+                <Text style={{ color: theme.colors.primary }} onPress={() => void openLegalDocument('terms').catch((error) => showToast({ type: 'error', title: 'Документ недоступен', message: error.message }))}>условия использования</Text>
                 {' '}и{' '}
-                <Text style={{ color: theme.colors.primary }} onPress={() => void openLegalDocument('privacy').catch((error) => Alert.alert('Документ недоступен', error.message))}>политику конфиденциальности</Text>
+                <Text style={{ color: theme.colors.primary }} onPress={() => void openLegalDocument('privacy').catch((error) => showToast({ type: 'error', title: 'Документ недоступен', message: error.message }))}>политику конфиденциальности</Text>
               </Text>
             }
             containerStyle={{ backgroundColor: 'transparent', borderWidth: 0, marginHorizontal: 0 }}
             checkedColor={theme.colors.primary}
           />
 
-          <Button
-            title="Зарегистрироваться"
-            loading={loading}
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !acceptedLegal || loading }}
+            activeOpacity={0.82}
             disabled={!acceptedLegal || loading}
             onPress={beginRegistration}
-            buttonStyle={{ backgroundColor: theme.colors.primary, borderRadius: 16, height: 55, marginTop: 10 }}
-            titleStyle={{ fontWeight: '800' }}
-          />
+            style={[styles.registerButton, !acceptedLegal || loading ? styles.registerButtonDisabled : styles.registerButtonActive]}
+          >
+            {loading ? (
+              <ActivityIndicator color="#0B0E11" />
+            ) : (
+              <Text style={[styles.registerButtonText, !acceptedLegal && styles.registerButtonTextDisabled]}>
+                Зарегистрироваться
+              </Text>
+            )}
+          </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.back()} style={styles.linkContainer}>
             <Text style={{ color: theme.colors.grey2 }}>
@@ -274,16 +299,23 @@ export default function RegisterScreen() {
         <ConfirmHcaptcha
           ref={captchaRef}
           siteKey={captchaSiteKey}
-          size="normal"
+          size="invisible"
           baseUrl="https://hcaptcha.com"
           languageCode="ru"
           onMessage={(event) => {
             const result = event?.nativeEvent?.data;
             if (event.success && result) {
+              if (captchaSubmittingRef.current) return;
+              captchaSubmittingRef.current = true;
               captchaRef.current?.hide();
-              void signUpWithEmail(result).finally(() => event.markUsed?.());
+              void signUpWithEmail(result).finally(() => {
+                event.markUsed?.();
+                captchaSubmittingRef.current = false;
+              });
             } else if (result === 'challenge-closed') {
               captchaRef.current?.hide();
+            } else if (result && !['open', 'loading'].includes(result)) {
+              showToast({ type: 'error', title: 'Не удалось проверить защиту', message: 'Попробуйте пройти проверку ещё раз.' });
             }
           }}
         />
@@ -300,6 +332,11 @@ const styles = StyleSheet.create({
   content: { padding: 25, flex: 1, justifyContent: 'center', paddingBottom: 32 },
   intro: { marginBottom: 30 },
   linkContainer: { marginTop: 25, alignItems: 'center' },
+  registerButton: { height: 56, marginTop: 10, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  registerButtonActive: { backgroundColor: '#F0B90B' },
+  registerButtonDisabled: { backgroundColor: '#34302A' },
+  registerButtonText: { color: '#0B0E11', fontSize: 16, fontWeight: '800' },
+  registerButtonTextDisabled: { color: '#77716A' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { height: '70%', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 25 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
