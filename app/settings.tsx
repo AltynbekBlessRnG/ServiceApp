@@ -33,6 +33,8 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   
   const [loading, setLoading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarPreviewUri, setAvatarPreviewUri] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
   
   // Данные формы
@@ -70,11 +72,13 @@ export default function SettingsScreen() {
     });
 
     if (!result.canceled && result.assets[0].uri) {
-      setLoading(true);
+      const localUri = result.assets[0].uri;
+      setAvatarPreviewUri(localUri);
+      setAvatarUploading(true);
       try {
         const previousAvatarUrl = profile?.avatar_url as string | null | undefined;
         const fileName = `${user.id}/avatar_${Date.now()}.jpg`;
-        const publicUrl = await uploadFileToSupabase('avatars', result.assets[0].uri, fileName);
+        const publicUrl = await uploadFileToSupabase('avatars', localUri, fileName);
         const { error } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
         if (error) {
           await removePublicStorageFiles('avatars', [publicUrl]).catch(() => undefined);
@@ -87,7 +91,8 @@ export default function SettingsScreen() {
       } catch (e: any) {
         Alert.alert("Ошибка", e.message);
       } finally {
-        setLoading(false);
+        setAvatarPreviewUri(null);
+        setAvatarUploading(false);
       }
     }
   }
@@ -137,7 +142,13 @@ export default function SettingsScreen() {
         
         <View style={styles.avatarSection}>
             <TouchableOpacity onPress={pickImage} style={styles.avatarWrapper}>
-                <UserAvatar avatarUrl={profile?.avatar_url} size={110} />
+                <UserAvatar avatarUrl={avatarPreviewUri || profile?.avatar_url} size={110} />
+                {avatarUploading ? (
+                  <View style={styles.avatarUploadOverlay}>
+                    <ActivityIndicator color="#fff" />
+                    <Text style={styles.avatarUploadText}>Загрузка</Text>
+                  </View>
+                ) : null}
                 <View style={styles.editBadge}><Icon name="camera" type="feather" size={14} color="#fff" /></View>
             </TouchableOpacity>
             <Text h4 style={{ marginTop: 16, color: '#fff', fontWeight: '800' }}>{fullName || 'Без имени'}</Text>
@@ -191,6 +202,8 @@ const styles = StyleSheet.create({
   container: { padding: 20, paddingBottom: 40 },
   avatarSection: { alignItems: 'center', marginBottom: 30 },
   avatarWrapper: { position: 'relative' },
+  avatarUploadOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: 55, backgroundColor: 'rgba(0,0,0,0.48)', justifyContent: 'center', alignItems: 'center' },
+  avatarUploadText: { color: '#fff', fontSize: 11, fontWeight: '700', marginTop: 5 },
   editBadge: { position: 'absolute', bottom: 0, right: 0, padding: 8, borderRadius: 20, backgroundColor: '#F0B90B', borderWidth: 3, borderColor: '#0B0E11' },
   section: { marginBottom: 25 },
   sectionTitle: { fontSize: 12, fontWeight: '800', marginBottom: 10, marginLeft: 5, textTransform: 'uppercase', color: '#6B6675', letterSpacing: 1 },

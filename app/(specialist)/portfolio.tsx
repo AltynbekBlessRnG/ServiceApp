@@ -64,7 +64,21 @@ export default function MyPortfolioScreen() {
 
   async function uploadFile(asset: any) {
     if (!user) return;
+    const tempId = `upload-${Date.now()}`;
+    setItems((current) => [{
+      id: tempId,
+      owner_id: user.id,
+      file_url: asset.uri,
+      thumbnail_url: asset.type === 'video' ? null : asset.uri,
+      file_type: asset.type === 'video' ? 'video' : 'image',
+      in_feed: false,
+      is_pinned: false,
+      is_hero: false,
+      created_at: new Date().toISOString(),
+      is_uploading: true,
+    }, ...current]);
     setUploading(true);
+    let uploadedUrls: string[] = [];
     try {
       const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
       const isVideo = asset.type === 'video' || ['mp4', 'mov'].includes(ext);
@@ -73,32 +87,38 @@ export default function MyPortfolioScreen() {
       
       const fileName = `${user.id}/${timestamp}.${ext}`;
       
-      // 1. Грузим основной файл
-      const publicUrl = await uploadFileToSupabase('portfolio', asset.uri, fileName);
-      let thumbUrl = publicUrl; 
-
-      // 2. Если видео — делаем превью (thumbnail)
+      let thumbnailUri: string | null = null;
       if (isVideo) {
           try {
               const { uri } = await VideoThumbnails.getThumbnailAsync(asset.uri, { time: 1000 });
-              const thumbName = `${user.id}/${timestamp}_thumb.jpg`;
-              thumbUrl = await uploadFileToSupabase('portfolio', uri, thumbName);
+              thumbnailUri = uri;
+              setItems((current) => current.map((item) => item.id === tempId ? { ...item, thumbnail_url: uri } : item));
           } catch { /* thumbnail failed */ }
       }
+
+      const thumbName = `${user.id}/${timestamp}_thumb.jpg`;
+      const [publicUrl, uploadedThumbnailUrl] = await Promise.all([
+        uploadFileToSupabase('portfolio', asset.uri, fileName),
+        thumbnailUri ? uploadFileToSupabase('portfolio', thumbnailUri, thumbName) : Promise.resolve(null),
+      ]);
+      const thumbUrl = uploadedThumbnailUrl || publicUrl;
+      uploadedUrls = [publicUrl, uploadedThumbnailUrl].filter((url): url is string => Boolean(url));
       
       // 3. Пишем в базу
-      const { error } = await supabase.from('portfolio_items').insert({
+      const { data, error } = await supabase.from('portfolio_items').insert({
           owner_id: user.id,
           file_url: publicUrl, 
           thumbnail_url: thumbUrl,
           file_type: fileType,
           in_feed: false, // По дефолту не в ленте
           is_pinned: false
-      });
+      }).select('*').single();
       
       if (error) throw error;
-      fetchPortfolio();
+      setItems((current) => current.map((item) => item.id === tempId ? data : item));
     } catch (e: any) { 
+        setItems((current) => current.filter((item) => item.id !== tempId));
+        await removePublicStorageFiles('portfolio', uploadedUrls).catch(() => undefined);
         Alert.alert('Ошибка', e.message); 
     } finally { 
         setUploading(false); 
@@ -221,7 +241,7 @@ export default function MyPortfolioScreen() {
                         item.is_hero && { borderColor: '#FFA502', borderWidth: 2 }, // Золотая рамка для обложки
                         item.is_pinned && { borderColor: '#F0B90B', borderWidth: 1 } // Золотая для закрепленных
                     ]} 
-                    onPress={() => setSelectedItem(item)}
+                    onPress={() => { if (!item.is_uploading) setSelectedItem(item); }}
                     activeOpacity={0.8}
                 >
                     <Image 
@@ -230,6 +250,12 @@ export default function MyPortfolioScreen() {
                         contentFit="cover"
                         cachePolicy="memory-disk"
                     />
+                    {item.is_uploading ? (
+                      <View style={styles.uploadOverlay}>
+                        <ActivityIndicator color="#fff" />
+                        <Text style={styles.uploadText}>Загрузка…</Text>
+                      </View>
+                    ) : null}
                     
                     {/* ЗНАЧКИ СТАТУСА */}
                     <View style={styles.badgesContainer}>
@@ -341,6 +367,8 @@ const styles = StyleSheet.create({
   gridContainer: { paddingHorizontal: 20, paddingBottom: 50 },
   gridItem: { width: COLUMN_SIZE, height: COLUMN_SIZE * 1.3, borderRadius: 16, overflow: 'hidden', backgroundColor: '#2B3139', marginBottom: 10 },
   media: { width: '100%', height: '100%' },
+  uploadOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  uploadText: { color: '#fff', fontSize: 11, fontWeight: '700', marginTop: 6 },
   
   badgesContainer: { position: 'absolute', bottom: 5, left: 5, flexDirection: 'row', gap: 4 },
   miniIcon: { backgroundColor: 'rgba(0,0,0,0.6)', padding: 3, borderRadius: 6 },
