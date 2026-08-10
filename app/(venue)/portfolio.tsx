@@ -58,24 +58,40 @@ export default function VenuePortfolioScreen() {
 
   async function uploadFile(asset: any) {
     if (!user) return;
+    const tempId = `upload-${Date.now()}`;
+    setItems((current) => [{
+      id: tempId,
+      owner_id: user.id,
+      file_url: asset.uri,
+      thumbnail_url: asset.uri,
+      file_type: 'image',
+      in_feed: false,
+      is_pinned: false,
+      is_hero: false,
+      created_at: new Date().toISOString(),
+      is_uploading: true,
+    }, ...current]);
     setUploading(true);
+    let publicUrl: string | null = null;
     try {
       const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
       const timestamp = Date.now();
       const fileName = `${user.id}/${timestamp}.${ext}`;
-      const publicUrl = await uploadFileToSupabase('portfolio', asset.uri, fileName);
+      publicUrl = await uploadFileToSupabase('portfolio', asset.uri, fileName);
 
-      const { error } = await supabase.from('portfolio_items').insert({
+      const { data, error } = await supabase.from('portfolio_items').insert({
           owner_id: user.id,
           file_url: publicUrl,
           thumbnail_url: publicUrl,
           file_type: 'image',
           in_feed: false,
           is_pinned: false,
-      });
+      }).select('*').single();
       if (error) throw error;
-      fetchPortfolio();
+      setItems((current) => current.map((item) => item.id === tempId ? data : item));
     } catch (e: any) {
+        setItems((current) => current.filter((item) => item.id !== tempId));
+        await removePublicStorageFiles('portfolio', [publicUrl]).catch(() => undefined);
         Alert.alert('Ошибка', e.message);
     } finally {
         setUploading(false);
@@ -161,7 +177,7 @@ export default function VenuePortfolioScreen() {
                         item.is_hero && { borderColor: '#FFA502', borderWidth: 2 },
                         item.is_pinned && { borderColor: '#F0B90B', borderWidth: 1 }
                     ]}
-                    onPress={() => setSelectedItem(item)}
+                    onPress={() => { if (!item.is_uploading) setSelectedItem(item); }}
                     activeOpacity={0.8}
                 >
                     <Image
@@ -169,6 +185,12 @@ export default function VenuePortfolioScreen() {
                         style={styles.media}
                         contentFit="cover"
                     />
+                    {item.is_uploading ? (
+                      <View style={styles.uploadOverlay}>
+                        <ActivityIndicator color="#fff" />
+                        <Text style={styles.uploadText}>Загрузка…</Text>
+                      </View>
+                    ) : null}
                     <View style={styles.badgesContainer}>
                         {item.is_pinned && <Icon name="paperclip" type="feather" color="#F0B90B" size={10} style={styles.miniIcon} />}
                         {item.is_hero && <Icon name="star" type="font-awesome" color="#FFA502" size={10} style={styles.miniIcon} />}
@@ -245,6 +267,8 @@ const styles = StyleSheet.create({
   gridContainer: { paddingHorizontal: 20, paddingBottom: 50 },
   gridItem: { width: COLUMN_SIZE, height: COLUMN_SIZE * 1.3, borderRadius: 16, overflow: 'hidden', backgroundColor: '#2B3139', marginBottom: 10 },
   media: { width: '100%', height: '100%' },
+  uploadOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  uploadText: { color: '#fff', fontSize: 11, fontWeight: '700', marginTop: 6 },
   badgesContainer: { position: 'absolute', bottom: 5, left: 5, flexDirection: 'row', gap: 4 },
   miniIcon: { backgroundColor: 'rgba(0,0,0,0.6)', padding: 3, borderRadius: 6 },
   empty: { alignItems: 'center', marginTop: 100 },
