@@ -4,7 +4,7 @@ import { resolveHomeRoute } from '../lib/auth-routing';
 import { getPublicAppConfig, getRequiredEnv } from '../lib/env';
 import { canTransitionBooking, deduplicateProviders, formatPrice } from '../lib/domain';
 import { getFallbackSearchIntent } from '../lib/search-intent';
-import { getAuthErrorMessage, getRegistrationValidationError, normalizeEmail, validateRegistrationPassword } from '../lib/auth-validation';
+import { EMAIL_OTP_LENGTH, getAuthErrorMessage, getRegistrationValidationError, normalizeEmail, validateRegistrationPassword } from '../lib/auth-validation';
 import { readAuthCallbackTokens } from '../lib/auth-callback';
 import { getPublicStoragePath } from '../lib/storage-path';
 
@@ -101,6 +101,10 @@ run('uses local search intent when AI is unavailable', () => {
 
 run('normalizes email addresses before authentication', () => {
   assert.equal(normalizeEmail('  User@Example.COM '), 'user@example.com');
+});
+
+run('keeps the email confirmation code aligned with Supabase config', () => {
+  assert.equal(EMAIL_OTP_LENGTH, 6);
 });
 
 run('requires a strong registration password', () => {

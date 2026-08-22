@@ -1,3 +1,5 @@
+export const EMAIL_OTP_LENGTH = 6;
+
 export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
 }

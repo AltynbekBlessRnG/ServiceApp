@@ -84,6 +84,11 @@ export default function RegisterScreen() {
     });
 
     if (error) {
+      console.warn('Supabase sign-up failed', {
+        code: error.code,
+        message: error.message,
+        status: error.status,
+      });
       showToast({ type: 'error', title: 'Регистрация не завершена', message: getAuthErrorMessage(error.message), duration: 5000 });
       setLoading(false);
       return;
@@ -187,6 +192,8 @@ export default function RegisterScreen() {
             onChangeText={setPassword}
             value={password}
             secureTextEntry={!passwordVisible}
+            autoCapitalize="none"
+            autoCorrect={false}
             onFocus={revealLowerForm}
             leftIcon={<Icon name="lock" type="feather" size={18} color={theme.colors.grey3} />}
             rightIcon={
@@ -204,6 +211,7 @@ export default function RegisterScreen() {
             secureTextEntry={!confirmationVisible}
             onFocus={revealLowerForm}
             autoCapitalize="none"
+            autoCorrect={false}
             leftIcon={<Icon name="shield" type="feather" size={18} color={theme.colors.grey3} />}
             rightIcon={
               <TouchableOpacity onPress={() => setConfirmationVisible((value) => !value)} hitSlop={10}>

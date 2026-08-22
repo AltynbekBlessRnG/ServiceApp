@@ -6,9 +6,9 @@
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#1e2329;border:1px solid #2b3139;border-radius:18px;padding:32px">
           <tr><td>
             <div style="font-size:28px;font-weight:800;color:#f0b90b">Taptym</div>
-            <h1 style="font-size:24px;margin:28px 0 12px">Подтвердите ваш email</h1>
-            <p style="color:#c7ccd4;line-height:1.6;margin:0 0 24px">Нажмите кнопку, чтобы завершить регистрацию. Без подтверждения войти в аккаунт невозможно.</p>
-            <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#f0b90b;color:#0b0e11;text-decoration:none;font-weight:800;padding:14px 22px;border-radius:10px">Подтвердить email</a>
+            <h1 style="color:#fafafa;font-size:24px;margin:28px 0 12px">Подтвердите ваш email</h1>
+            <p style="color:#c7ccd4;line-height:1.6;margin:0 0 24px">Введите этот код в приложении Taptym, чтобы завершить регистрацию:</p>
+            <div style="background:#0b0e11;border:1px solid #2b3139;border-radius:12px;color:#f0b90b;font-size:32px;font-weight:800;letter-spacing:8px;padding:18px 20px;text-align:center">{{ .Token }}</div>
             <p style="color:#848e9c;font-size:13px;line-height:1.5;margin:28px 0 0">Если вы не регистрировались в Taptym, просто проигнорируйте это письмо.</p>
           </td></tr>
         </table>
