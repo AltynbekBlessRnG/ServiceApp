@@ -7,6 +7,7 @@ import { getFallbackSearchIntent } from '../lib/search-intent';
 import { EMAIL_OTP_LENGTH, getAuthErrorMessage, getRegistrationValidationError, normalizeEmail, validateRegistrationPassword } from '../lib/auth-validation';
 import { readAuthCallbackTokens } from '../lib/auth-callback';
 import { getPublicStoragePath } from '../lib/storage-path';
+import { getCaptchaFailureMessage } from '../lib/captcha';
 
 function run(name: string, fn: () => void) {
   try {
@@ -105,6 +106,11 @@ run('normalizes email addresses before authentication', () => {
 
 run('keeps the email confirmation code aligned with Supabase config', () => {
   assert.equal(EMAIL_OTP_LENGTH, 6);
+});
+
+run('does not treat the hCaptcha loading timeout as a terminal failure', () => {
+  assert.equal(getCaptchaFailureMessage({ nativeEvent: { data: 'error', description: 'loading timeout' } }), null);
+  assert.match(getCaptchaFailureMessage({ nativeEvent: { data: 'script-error' } }) ?? '', /загрузить hCaptcha/);
 });
 
 run('requires a strong registration password', () => {

@@ -6,7 +6,7 @@ import { Keyboard, StyleSheet, View } from 'react-native';
 import { showToast } from '../../components/AppToast';
 import { supabase } from '../../lib/supabase';
 import { EMAIL_OTP_LENGTH, getAuthErrorMessage } from '../../lib/auth-validation';
-import { getCaptchaSiteKey } from '../../lib/captcha';
+import { getCaptchaFailureMessage, getCaptchaSiteKey } from '../../lib/captcha';
 
 export default function VerifyEmailScreen() {
   const { theme } = useTheme();
@@ -130,8 +130,12 @@ export default function VerifyEmailScreen() {
               });
             } else if (result === 'challenge-closed') {
               captchaRef.current?.hide();
-            } else if (result && !['open', 'loading'].includes(result)) {
-              showToast({ type: 'error', title: 'Не удалось проверить защиту', message: 'Попробуйте отправить код ещё раз.' });
+            } else {
+              const message = getCaptchaFailureMessage(event);
+              if (!message) return;
+              console.warn('hCaptcha resend failed', { result });
+              captchaRef.current?.hide();
+              showToast({ type: 'error', title: 'Не удалось проверить защиту', message });
             }
           }}
         />

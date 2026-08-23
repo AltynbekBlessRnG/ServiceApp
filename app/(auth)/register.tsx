@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { openLegalDocument } from '../../lib/legal';
 import { getAuthErrorMessage, getRegistrationValidationError, normalizeEmail } from '../../lib/auth-validation';
-import { getCaptchaSiteKey } from '../../lib/captcha';
+import { getCaptchaFailureMessage, getCaptchaSiteKey } from '../../lib/captcha';
 import { showToast } from '../../components/AppToast';
 
 const KZ_CITIES = [
@@ -322,8 +322,12 @@ export default function RegisterScreen() {
               });
             } else if (result === 'challenge-closed') {
               captchaRef.current?.hide();
-            } else if (result && !['open', 'loading'].includes(result)) {
-              showToast({ type: 'error', title: 'Не удалось проверить защиту', message: 'Попробуйте пройти проверку ещё раз.' });
+            } else {
+              const message = getCaptchaFailureMessage(event);
+              if (!message) return;
+              console.warn('hCaptcha registration failed', { result });
+              captchaRef.current?.hide();
+              showToast({ type: 'error', title: 'Не удалось проверить защиту', message });
             }
           }}
         />

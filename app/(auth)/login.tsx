@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { getAuthErrorMessage, normalizeEmail } from '../../lib/auth-validation';
-import { getCaptchaSiteKey } from '../../lib/captcha';
+import { getCaptchaFailureMessage, getCaptchaSiteKey } from '../../lib/captcha';
+import { showToast } from '../../components/AppToast';
 
 export default function LoginScreen() {
   const { theme } = useTheme();
@@ -109,6 +110,12 @@ export default function LoginScreen() {
               void signInWithEmail(result).finally(() => event.markUsed?.());
             } else if (result === 'challenge-closed') {
               captchaRef.current?.hide();
+            } else {
+              const message = getCaptchaFailureMessage(event);
+              if (!message) return;
+              console.warn('hCaptcha login failed', { result });
+              captchaRef.current?.hide();
+              showToast({ type: 'error', title: 'Не удалось проверить защиту', message });
             }
           }}
         />
