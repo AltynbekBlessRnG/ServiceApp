@@ -4,8 +4,9 @@ import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { showToast } from '../../components/AppToast';
 import { getAuthErrorMessage, normalizeEmail } from '../../lib/auth-validation';
-import { getCaptchaSiteKey } from '../../lib/captcha';
+import { getCaptchaFailureMessage, getCaptchaSiteKey } from '../../lib/captcha';
 import { supabase } from '../../lib/supabase';
 
 export default function ForgotPasswordScreen() {
@@ -70,6 +71,12 @@ export default function ForgotPasswordScreen() {
               void submit(result).finally(() => event.markUsed?.());
             } else if (result === 'challenge-closed') {
               captchaRef.current?.hide();
+            } else {
+              const message = getCaptchaFailureMessage(event);
+              if (!message) return;
+              console.warn('hCaptcha recovery failed', { result });
+              captchaRef.current?.hide();
+              showToast({ type: 'error', title: 'Не удалось проверить защиту', message });
             }
           }}
         />
