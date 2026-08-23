@@ -1,7 +1,6 @@
 import { Button, Input, Text, useTheme } from '@rneui/themed';
-import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 import { router } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -13,7 +12,8 @@ import {
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { getAuthErrorMessage, normalizeEmail } from '../../lib/auth-validation';
-import { getCaptchaFailureMessage, getCaptchaSiteKey } from '../../lib/captcha';
+import { describeCaptchaRejection } from '../../lib/captcha';
+import { useCaptcha } from '../../hooks/useCaptcha';
 import { showToast } from '../../components/AppToast';
 
 export default function LoginScreen() {
@@ -21,33 +21,36 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const captchaRef = useRef<ConfirmHcaptcha>(null);
-  const captchaSiteKey = getCaptchaSiteKey();
+  const captcha = useCaptcha('login', 'normal');
 
   async function signInWithEmail(captchaToken?: string) {
-    setLoading(true);
-
     const { error } = await supabase.auth.signInWithPassword({
       email: normalizeEmail(email),
       password,
       options: { captchaToken },
     });
 
-    if (error) {
-      Alert.alert('Ошибка входа', getAuthErrorMessage(error.message));
-    } else {
-      router.replace('/');
-    }
-
     setLoading(false);
-  }
 
-  function beginSignIn() {
-    if (captchaSiteKey) {
-      captchaRef.current?.show();
+    if (error) {
+      Alert.alert('Ошибка входа', describeCaptchaRejection(error.message) ?? getAuthErrorMessage(error.message));
       return;
     }
-    void signInWithEmail();
+    router.replace('/');
+  }
+
+  async function beginSignIn() {
+    if (loading) return;
+    setLoading(true);
+    const result = await captcha.requestToken();
+    if (!result.ok) {
+      setLoading(false);
+      if (result.reason !== 'cancelled') {
+        showToast({ type: 'error', title: 'Не удалось проверить защиту', message: result.message });
+      }
+      return;
+    }
+    await signInWithEmail(result.token);
   }
 
   return (
@@ -87,7 +90,7 @@ export default function LoginScreen() {
             autoCapitalize="none"
             inputStyle={{ color: theme.colors.black }}
           />
-          <Button title="Войти" loading={loading} disabled={loading} onPress={beginSignIn} buttonStyle={styles.button} />
+          <Button title="Войти" loading={loading} disabled={loading} onPress={() => void beginSignIn()} buttonStyle={styles.button} />
           <TouchableOpacity onPress={() => router.push('/forgot-password')} style={styles.linkContainer}>
             <Text style={styles.linkText}>Забыли пароль?</Text>
           </TouchableOpacity>
@@ -96,30 +99,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-      {captchaSiteKey ? (
-        <ConfirmHcaptcha
-          ref={captchaRef}
-          siteKey={captchaSiteKey}
-          size="normal"
-          baseUrl="https://hcaptcha.com"
-          languageCode="ru"
-          onMessage={(event) => {
-            const result = event?.nativeEvent?.data;
-            if (event.success && result) {
-              captchaRef.current?.hide();
-              void signInWithEmail(result).finally(() => event.markUsed?.());
-            } else if (result === 'challenge-closed') {
-              captchaRef.current?.hide();
-            } else {
-              const message = getCaptchaFailureMessage(event);
-              if (!message) return;
-              console.warn('hCaptcha login failed', { result });
-              captchaRef.current?.hide();
-              showToast({ type: 'error', title: 'Не удалось проверить защиту', message });
-            }
-          }}
-        />
-      ) : null}
+      {captcha.element}
     </KeyboardAvoidingView>
   );
 }

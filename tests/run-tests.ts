@@ -7,7 +7,7 @@ import { getFallbackSearchIntent } from '../lib/search-intent';
 import { EMAIL_OTP_LENGTH, getAuthErrorMessage, getRegistrationValidationError, normalizeEmail, validateRegistrationPassword } from '../lib/auth-validation';
 import { readAuthCallbackTokens } from '../lib/auth-callback';
 import { getPublicStoragePath } from '../lib/storage-path';
-import { getCaptchaFailureMessage } from '../lib/captcha';
+import { describeCaptchaRejection, getCaptchaSiteKey, interpretCaptchaEvent } from '../lib/captcha';
 
 function run(name: string, fn: () => void) {
   try {
@@ -109,8 +109,35 @@ run('keeps the email confirmation code aligned with Supabase config', () => {
 });
 
 run('does not treat the hCaptcha loading timeout as a terminal failure', () => {
-  assert.equal(getCaptchaFailureMessage({ nativeEvent: { data: 'error', description: 'loading timeout' } }), null);
-  assert.match(getCaptchaFailureMessage({ nativeEvent: { data: 'script-error' } }) ?? '', /загрузить hCaptcha/);
+  assert.equal(interpretCaptchaEvent({ nativeEvent: { data: 'error', description: 'loading timeout' } }).kind, 'pending');
+  assert.equal(interpretCaptchaEvent({ nativeEvent: { data: 'loading' } }).kind, 'pending');
+});
+
+run('classifies every terminal hCaptcha outcome exactly once', () => {
+  assert.deepEqual(interpretCaptchaEvent({ success: true, nativeEvent: { data: 'P1_token' } }), {
+    kind: 'token',
+    token: 'P1_token',
+  });
+  assert.equal(interpretCaptchaEvent({ nativeEvent: { data: 'challenge-closed' } }).kind, 'cancelled');
+
+  const scriptError = interpretCaptchaEvent({ nativeEvent: { data: 'script-error' } });
+  assert.equal(scriptError.kind, 'failed');
+  assert.match(scriptError.kind === 'failed' ? scriptError.message : '', /загрузить hCaptcha/);
+});
+
+run('never falls back to a hardcoded hCaptcha site key', () => {
+  const previous = process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY;
+  delete process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY;
+  assert.equal(getCaptchaSiteKey(), '');
+  if (previous !== undefined) process.env.EXPO_PUBLIC_HCAPTCHA_SITE_KEY = previous;
+});
+
+run('reports a mismatched hCaptcha key pair as a server misconfiguration', () => {
+  assert.match(
+    describeCaptchaRejection('captcha protection: request disallowed (invalid-input-response)') ?? '',
+    /ключи hCaptcha не совпадают/,
+  );
+  assert.equal(describeCaptchaRejection('Invalid login credentials'), null);
 });
 
 run('requires a strong registration password', () => {

@@ -24,6 +24,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx tests/run-tests.ts",
     "test:db": "supabase test db",
+    "verify:captcha": "node scripts/verify-hcaptcha.mjs",
     "types:generate": "supabase gen types typescript --local > types/database.generated.ts",
     "export": "expo export --platform all --output-dir dist",
     "check": "npm run typecheck && npm run lint && npm test"

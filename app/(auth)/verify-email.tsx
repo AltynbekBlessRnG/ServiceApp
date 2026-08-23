@@ -1,12 +1,12 @@
 import { Button, Icon, Input, Text, useTheme } from '@rneui/themed';
-import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Keyboard, StyleSheet, View } from 'react-native';
 import { showToast } from '../../components/AppToast';
 import { supabase } from '../../lib/supabase';
 import { EMAIL_OTP_LENGTH, getAuthErrorMessage } from '../../lib/auth-validation';
-import { getCaptchaFailureMessage, getCaptchaSiteKey } from '../../lib/captcha';
+import { describeCaptchaRejection } from '../../lib/captcha';
+import { useCaptcha } from '../../hooks/useCaptcha';
 
 export default function VerifyEmailScreen() {
   const { theme } = useTheme();
@@ -16,9 +16,7 @@ export default function VerifyEmailScreen() {
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [cooldown, setCooldown] = useState(60);
-  const captchaRef = useRef<ConfirmHcaptcha>(null);
-  const captchaSubmittingRef = useRef(false);
-  const captchaSiteKey = getCaptchaSiteKey();
+  const captcha = useCaptcha('resend');
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -36,19 +34,30 @@ export default function VerifyEmailScreen() {
     });
     setLoading(false);
     if (error) {
-      showToast({ type: 'error', title: 'Не удалось отправить код', message: getAuthErrorMessage(error.message) });
+      showToast({
+        type: 'error',
+        title: 'Не удалось отправить код',
+        message: describeCaptchaRejection(error.message) ?? getAuthErrorMessage(error.message),
+        duration: 6000,
+      });
       return;
     }
     setCooldown(60);
     showToast({ type: 'success', title: 'Новый код отправлен', message: 'Проверьте входящие и папку «Спам».' });
   };
 
-  const beginResend = () => {
-    if (captchaSiteKey) {
-      captchaRef.current?.show();
+  const beginResend = async () => {
+    if (loading) return;
+    setLoading(true);
+    const result = await captcha.requestToken();
+    setLoading(false);
+    if (!result.ok) {
+      if (result.reason !== 'cancelled') {
+        showToast({ type: 'error', title: 'Не удалось проверить защиту', message: result.message });
+      }
       return;
     }
-    void resend();
+    await resend(result.token);
   };
 
   const verify = async () => {
@@ -108,38 +117,10 @@ export default function VerifyEmailScreen() {
         type="outline"
         loading={loading}
         disabled={!normalizedEmail || loading || cooldown > 0}
-        onPress={beginResend}
+        onPress={() => void beginResend()}
       />
       <Button title="Перейти ко входу" type="clear" onPress={() => router.replace('/(auth)/login')} containerStyle={{ marginTop: 12 }} />
-      {captchaSiteKey ? (
-        <ConfirmHcaptcha
-          ref={captchaRef}
-          siteKey={captchaSiteKey}
-          size="invisible"
-          baseUrl="https://hcaptcha.com"
-          languageCode="ru"
-          onMessage={(event) => {
-            const result = event?.nativeEvent?.data;
-            if (event.success && result) {
-              if (captchaSubmittingRef.current) return;
-              captchaSubmittingRef.current = true;
-              captchaRef.current?.hide();
-              void resend(result).finally(() => {
-                event.markUsed?.();
-                captchaSubmittingRef.current = false;
-              });
-            } else if (result === 'challenge-closed') {
-              captchaRef.current?.hide();
-            } else {
-              const message = getCaptchaFailureMessage(event);
-              if (!message) return;
-              console.warn('hCaptcha resend failed', { result });
-              captchaRef.current?.hide();
-              showToast({ type: 'error', title: 'Не удалось проверить защиту', message });
-            }
-          }}
-        />
-      ) : null}
+      {captcha.element}
     </View>
   );
 }

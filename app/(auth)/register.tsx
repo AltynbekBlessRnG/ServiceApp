@@ -1,5 +1,4 @@
 import { CheckBox, Icon, Input, Text, useTheme } from '@rneui/themed';
-import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
@@ -19,8 +18,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { openLegalDocument } from '../../lib/legal';
 import { getAuthErrorMessage, getRegistrationValidationError, normalizeEmail } from '../../lib/auth-validation';
-import { getCaptchaFailureMessage, getCaptchaSiteKey } from '../../lib/captcha';
+import { describeCaptchaRejection } from '../../lib/captcha';
+import { useCaptcha } from '../../hooks/useCaptcha';
 import { showToast } from '../../components/AppToast';
+
+type RegistrationPhase = 'idle' | 'captcha' | 'signup';
+
+const PHASE_LABEL: Record<Exclude<RegistrationPhase, 'idle'>, string> = {
+  captcha: 'Проверяем защиту…',
+  signup: 'Создаём аккаунт…',
+};
 
 const KZ_CITIES = [
   'Алматы',
@@ -56,19 +63,16 @@ export default function RegisterScreen() {
   const [fullName, setFullName] = useState('');
   const [city, setCity] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [phase, setPhase] = useState<RegistrationPhase>('idle');
   const [acceptedLegal, setAcceptedLegal] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-  const captchaRef = useRef<ConfirmHcaptcha>(null);
-  const captchaSubmittingRef = useRef(false);
-  const captchaSiteKey = getCaptchaSiteKey();
+  const captcha = useCaptcha('registration');
+  const busy = phase !== 'idle';
 
   async function signUpWithEmail(captchaToken?: string) {
     const normalizedEmail = normalizeEmail(email);
-
-    setLoading(true);
 
     const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
@@ -89,20 +93,41 @@ export default function RegisterScreen() {
         message: error.message,
         status: error.status,
       });
-      showToast({ type: 'error', title: 'Регистрация не завершена', message: getAuthErrorMessage(error.message), duration: 5000 });
-      setLoading(false);
+      setPhase('idle');
+      showToast({
+        type: 'error',
+        title: 'Регистрация не завершена',
+        message: describeCaptchaRejection(error.message) ?? getAuthErrorMessage(error.message),
+        duration: 6000,
+      });
       return;
     }
 
+    // Supabase answers a sign-up for an already confirmed address with a
+    // decoy user that carries no identities, instead of an error. Without this
+    // check the screen would send the person to a code they never receive.
+    if (data.user && !data.session && (data.user.identities?.length ?? 0) === 0) {
+      setPhase('idle');
+      showToast({
+        type: 'warning',
+        title: 'Аккаунт уже существует',
+        message: 'Этот email уже зарегистрирован. Войдите или восстановите пароль.',
+        duration: 5000,
+      });
+      router.replace('/(auth)/login');
+      return;
+    }
+
+    setPhase('idle');
     if (data.session) {
       router.replace('/(auth)/role-select');
       return;
     }
-    setLoading(false);
     router.replace({ pathname: '/verify-email', params: { email: normalizedEmail } });
   }
 
-  function beginRegistration() {
+  async function beginRegistration() {
+    if (busy) return;
     const validationError = getRegistrationValidationError({
       fullName,
       city,
@@ -116,11 +141,19 @@ export default function RegisterScreen() {
       return;
     }
     Keyboard.dismiss();
-    if (captchaSiteKey) {
-      captchaRef.current?.show();
+
+    setPhase('captcha');
+    const result = await captcha.requestToken();
+    if (!result.ok) {
+      setPhase('idle');
+      if (result.reason !== 'cancelled') {
+        showToast({ type: 'error', title: 'Не удалось проверить защиту', message: result.message });
+      }
       return;
     }
-    void signUpWithEmail();
+
+    setPhase('signup');
+    await signUpWithEmail(result.token);
   }
 
   function revealLowerForm() {
@@ -237,18 +270,21 @@ export default function RegisterScreen() {
 
           <TouchableOpacity
             accessibilityRole="button"
-            accessibilityState={{ disabled: !acceptedLegal || loading }}
+            accessibilityState={{ disabled: !acceptedLegal || busy, busy }}
             activeOpacity={0.82}
-            disabled={!acceptedLegal || loading}
-            onPress={beginRegistration}
-            style={[styles.registerButton, !acceptedLegal || loading ? styles.registerButtonDisabled : styles.registerButtonActive]}
+            disabled={!acceptedLegal || busy}
+            onPress={() => void beginRegistration()}
+            style={[styles.registerButton, !acceptedLegal || busy ? styles.registerButtonDisabled : styles.registerButtonActive]}
           >
-            {loading ? (
-              <ActivityIndicator color="#0B0E11" />
-            ) : (
+            {phase === 'idle' ? (
               <Text style={[styles.registerButtonText, !acceptedLegal && styles.registerButtonTextDisabled]}>
                 Зарегистрироваться
               </Text>
+            ) : (
+              <View style={styles.registerButtonProgress}>
+                <ActivityIndicator color="#77716A" />
+                <Text style={[styles.registerButtonText, styles.registerButtonTextDisabled]}>{PHASE_LABEL[phase]}</Text>
+              </View>
             )}
           </TouchableOpacity>
 
@@ -303,35 +339,7 @@ export default function RegisterScreen() {
         </View>
       </Modal>
 
-      {captchaSiteKey ? (
-        <ConfirmHcaptcha
-          ref={captchaRef}
-          siteKey={captchaSiteKey}
-          size="invisible"
-          baseUrl="https://hcaptcha.com"
-          languageCode="ru"
-          onMessage={(event) => {
-            const result = event?.nativeEvent?.data;
-            if (event.success && result) {
-              if (captchaSubmittingRef.current) return;
-              captchaSubmittingRef.current = true;
-              captchaRef.current?.hide();
-              void signUpWithEmail(result).finally(() => {
-                event.markUsed?.();
-                captchaSubmittingRef.current = false;
-              });
-            } else if (result === 'challenge-closed') {
-              captchaRef.current?.hide();
-            } else {
-              const message = getCaptchaFailureMessage(event);
-              if (!message) return;
-              console.warn('hCaptcha registration failed', { result });
-              captchaRef.current?.hide();
-              showToast({ type: 'error', title: 'Не удалось проверить защиту', message });
-            }
-          }}
-        />
-      ) : null}
+      {captcha.element}
     </KeyboardAvoidingView>
   );
 }
@@ -348,6 +356,7 @@ const styles = StyleSheet.create({
   registerButtonActive: { backgroundColor: '#F0B90B' },
   registerButtonDisabled: { backgroundColor: '#34302A' },
   registerButtonText: { color: '#0B0E11', fontSize: 16, fontWeight: '800' },
+  registerButtonProgress: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   registerButtonTextDisabled: { color: '#77716A' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { height: '70%', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 25 },
