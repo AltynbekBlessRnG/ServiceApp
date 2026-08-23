@@ -25,3 +25,8 @@ supabase/.temp/
 
 expo-env.d.ts
 # @end expo-cli
+
+# App Store Connect API keys — никогда не коммитить
+AuthKey_*.p8
+*.p8
+.asc-env
