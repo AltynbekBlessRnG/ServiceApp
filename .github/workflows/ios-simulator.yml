@@ -1,0 +1,113 @@
+name: iOS simulator
+
+# Снимает экраны приложения на симуляторе iPhone. Нужно потому, что у владельца
+# проекта нет ни iPhone, ни macOS: репозиторий публичный, поэтому macOS-раннеры
+# GitHub бесплатны, а снимки из симулятора Apple принимает для App Store.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_url:
+        description: "Ссылка на симуляторную сборку EAS (.tar.gz)"
+        required: true
+        type: string
+      device:
+        description: "Модель симулятора; если её нет — возьмём самый большой iPhone"
+        required: false
+        default: "iPhone 17 Pro Max"
+        type: string
+
+jobs:
+  capture:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      BUNDLE_ID: com.adiya.serviceapp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Скачать сборку
+        run: |
+          set -euo pipefail
+          mkdir -p artifact shots
+          curl -fL --retry 3 "${{ inputs.build_url }}" -o artifact/app.tar.gz
+          tar -xzf artifact/app.tar.gz -C artifact
+          APP_PATH=$(find artifact -maxdepth 3 -name '*.app' | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::В архиве нет .app — это точно симуляторная сборка?"
+            find artifact -maxdepth 3 | head -40
+            exit 1
+          fi
+          echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+          echo "Приложение: $APP_PATH"
+
+      - name: Выбрать симулятор
+        run: |
+          set -euo pipefail
+          xcrun simctl list devices available | grep iPhone || true
+          python3 scripts/pick-simulator.py "${{ inputs.device }}" > picked.txt
+          SIM_UDID=$(sed -n 1p picked.txt)
+          SIM_NAME=$(sed -n 2p picked.txt)
+          echo "SIM_UDID=$SIM_UDID" >> "$GITHUB_ENV"
+          echo "SIM_NAME=$SIM_NAME" >> "$GITHUB_ENV"
+          echo "Выбран: $SIM_NAME"
+
+      - name: Запустить приложение
+        run: |
+          set -euo pipefail
+          xcrun simctl boot "$SIM_UDID"
+          xcrun simctl bootstatus "$SIM_UDID" -b
+          xcrun simctl install "$SIM_UDID" "$APP_PATH"
+          xcrun simctl launch "$SIM_UDID" "$BUNDLE_ID"
+
+      - name: Снять экраны запуска
+        run: |
+          set -euo pipefail
+          for step in 10 20 30; do
+            sleep 10
+            xcrun simctl io "$SIM_UDID" screenshot "shots/launch-${step}s.png"
+            echo "кадр на ${step} сек снят"
+          done
+
+      - name: Проверить, что приложение не упало
+        run: |
+          set -euo pipefail
+          if xcrun simctl spawn "$SIM_UDID" launchctl list | grep -q "$BUNDLE_ID"; then
+            echo "Приложение живо через 30 секунд после запуска."
+          else
+            echo "::error::Процесс $BUNDLE_ID не найден — приложение упало на старте."
+            xcrun simctl spawn "$SIM_UDID" log show --last 3m --style compact \
+              --predicate 'processImagePath CONTAINS "serviceapp"' | tail -100 || true
+            exit 1
+          fi
+
+      - name: Прогнать сценарии Maestro
+        if: hashFiles('.maestro/*.yaml') != ''
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          curl -Ls https://get.maestro.mobile.dev | bash
+          export PATH="$PATH:$HOME/.maestro/bin"
+          maestro --version
+          maestro test .maestro --debug-output maestro-logs
+          find maestro-logs -name '*.png' -exec cp {} shots/ \; || true
+
+      - name: Собрать снимки
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-screenshots-${{ github.run_number }}
+          path: |
+            shots/
+            maestro-logs/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Итог
+        if: always()
+        run: |
+          {
+            echo "### Симулятор: ${SIM_NAME:-неизвестно}"
+            echo ""
+            ls -la shots/ 2>/dev/null | tail -n +2 || echo "снимков нет"
+          } >> "$GITHUB_STEP_SUMMARY"

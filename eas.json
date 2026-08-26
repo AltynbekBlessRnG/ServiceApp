@@ -30,6 +30,17 @@
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
+    "simulator": {
+      "environment": "preview",
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      }
+    },
     "production": {
       "environment": "production",
       "autoIncrement": true,
