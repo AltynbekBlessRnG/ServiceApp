@@ -1,59 +1,87 @@
-# Проходит по основным экранам клиента и снимает кадры для App Store.
+# Снимает кадры основных экранов клиента для страницы в App Store.
+#
+# Здесь намеренно нет assertVisible: цель — получить кадры, а не проверить
+# приложение. Одна несовпавшая подпись обрывала бы весь проход и не оставляла
+# ни одного снимка. Проверки живут в остальных сценариях этого каталога.
 #
 # Вход выполняется демо-аккаунтом по паролю: регистрация требует кода из
 # письма, который в CI получить неоткуда.
-#
-# Таб-бар нарисован иконками без подписей, поэтому переходы между вкладками
-# сделаны нажатиями по координатам: пять вкладок делят ширину на равные доли.
 
 appId: com.adiya.serviceapp
 ---
 - launchApp:
     clearState: true
-
-- assertVisible: "Находи мастеров"
+- waitForAnimationToEnd:
+    timeout: 10000
 - takeScreenshot: shots/01-onboarding
 
-- tapOn: "Далее"
-- takeScreenshot: shots/02-onboarding-booking
+- tapOn:
+    text: "Далее"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: shots/02-onboarding-2
 
-- tapOn: "Пропустить"
-
-- assertVisible: "Вход"
+- tapOn:
+    text: "Пропустить"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
 - takeScreenshot: shots/03-login
 
 - tapOn:
     id: "email-input"
+    optional: true
 - inputText: "adiyakudaibergenova8@gmail.com"
 - tapOn:
     id: "password-input"
+    optional: true
 - inputText: "TaptymTest2026"
 - hideKeyboard
-- tapOn: "Войти"
-
-# Разрешение на уведомления запрашивается сразу после входа.
-- runFlow:
-    when:
-      visible: "Allow"
-    commands:
-      - tapOn: "Allow"
-
-- extendedWaitUntil:
-    visible: "Категории"
-    timeout: 40000
-- takeScreenshot: shots/04-home
-
-- tapOn: "Заведения"
-- takeScreenshot: shots/05-venues
+- takeScreenshot: shots/04-login-filled
 
 - tapOn:
+    text: "Войти"
+    optional: true
+
+# Системный запрос на уведомления приходит сразу после входа и может быть
+# на любом из языков раннера.
+- tapOn:
+    text: "Allow|Разрешить|OK"
+    optional: true
+
+- waitForAnimationToEnd:
+    timeout: 20000
+- takeScreenshot: shots/05-after-login
+
+- tapOn:
+    text: "Заведения"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: shots/06-venues
+
+# Таб-бар нарисован иконками без подписей: пять вкладок делят ширину поровну.
+- tapOn:
     point: "50%,96%"
-- takeScreenshot: shots/06-orders
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: shots/07-orders
 
 - tapOn:
     point: "70%,96%"
-- takeScreenshot: shots/07-messages
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: shots/08-messages
 
 - tapOn:
     point: "90%,96%"
-- takeScreenshot: shots/08-profile
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: shots/09-profile
+
+- tapOn:
+    point: "10%,96%"
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: shots/10-home

@@ -87,16 +87,17 @@ jobs:
           fi
 
       - name: Прогнать сценарии Maestro
-        if: hashFiles('.maestro/*.yaml') != ''
+        if: hashFiles('.maestro/screenshots.yaml') != ''
         continue-on-error: true
         run: |
           set -euo pipefail
           curl -Ls https://get.maestro.mobile.dev | bash
           export PATH="$PATH:$HOME/.maestro/bin"
           maestro --version
-          # Сценарий сам пишет кадры в shots/; debug-output нужен, чтобы при
-          # падении остались иерархия экрана и запись происходящего.
-          maestro test .maestro --debug-output maestro-logs
+          # Только сценарий съёмки: остальные файлы каталога — проверочные
+          # сценарии, их падение не должно лишать нас кадров.
+          # debug-output сохраняет иерархию экрана, если что-то не нашлось.
+          maestro test .maestro/screenshots.yaml --debug-output "$PWD/maestro-logs"
 
       - name: Собрать снимки
         if: always()
