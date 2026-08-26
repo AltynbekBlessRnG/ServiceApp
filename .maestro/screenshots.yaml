@@ -1,0 +1,59 @@
+# Проходит по основным экранам клиента и снимает кадры для App Store.
+#
+# Вход выполняется демо-аккаунтом по паролю: регистрация требует кода из
+# письма, который в CI получить неоткуда.
+#
+# Таб-бар нарисован иконками без подписей, поэтому переходы между вкладками
+# сделаны нажатиями по координатам: пять вкладок делят ширину на равные доли.
+
+appId: com.adiya.serviceapp
+---
+- launchApp:
+    clearState: true
+
+- assertVisible: "Находи мастеров"
+- takeScreenshot: shots/01-onboarding
+
+- tapOn: "Далее"
+- takeScreenshot: shots/02-onboarding-booking
+
+- tapOn: "Пропустить"
+
+- assertVisible: "Вход"
+- takeScreenshot: shots/03-login
+
+- tapOn:
+    id: "email-input"
+- inputText: "adiyakudaibergenova8@gmail.com"
+- tapOn:
+    id: "password-input"
+- inputText: "TaptymTest2026"
+- hideKeyboard
+- tapOn: "Войти"
+
+# Разрешение на уведомления запрашивается сразу после входа.
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+
+- extendedWaitUntil:
+    visible: "Категории"
+    timeout: 40000
+- takeScreenshot: shots/04-home
+
+- tapOn: "Заведения"
+- takeScreenshot: shots/05-venues
+
+- tapOn:
+    point: "50%,96%"
+- takeScreenshot: shots/06-orders
+
+- tapOn:
+    point: "70%,96%"
+- takeScreenshot: shots/07-messages
+
+- tapOn:
+    point: "90%,96%"
+- takeScreenshot: shots/08-profile
