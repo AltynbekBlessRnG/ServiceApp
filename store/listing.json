@@ -1,0 +1,16 @@
+{
+  "supportUrl": "https://altynbekblessrng.github.io/ServiceApp/legal/support.html",
+  "privacyPolicyUrl": "https://altynbekblessrng.github.io/ServiceApp/legal/privacy.html",
+  "locales": {
+    "en-US": {
+      "subtitle": "Book specialists and venues",
+      "keywords": "services,booking,beauty,salon,barber,spa,appointment,Kazakhstan,Almaty,reviews",
+      "description": "Taptym is a services marketplace for Kazakhstan. Find trusted specialists and venues in your city, look through their work and reviews, book a time that suits you, and message them directly — all in one app.\n\nFOR CLIENTS\n• Browse specialists and venues by category\n• Real portfolios and reviews left by other clients\n• Book straight from the app, without phone calls\n• Chat with the provider before and after a booking\n• Keep favourites and your booking history in one place\n\nFOR SPECIALISTS AND VENUES\n• A profile with your services and prices\n• Incoming bookings you confirm, decline or complete\n• A portfolio that shows your work\n• A notification for every new request\n\nCreate an account with your email and a six-digit confirmation code, then choose how you use Taptym: as a client, as an independent specialist, or as a venue.\n\nAvailable across Kazakhstan, including Almaty, Astana, Shymkent, Karaganda and Aktobe."
+    },
+    "ru": {
+      "subtitle": "Мастера и заведения рядом",
+      "keywords": "мастер,салон,бронирование,запись,услуги,маникюр,барбер,спа,Алматы,Астана,отзывы",
+      "description": "Taptym — маркетплейс услуг Казахстана. Находите проверенных мастеров и заведения в своём городе, смотрите их работы и отзывы, бронируйте удобное время и пишите напрямую — всё в одном приложении.\n\nКЛИЕНТАМ\n• Каталог специалистов и заведений по категориям\n• Портфолио работ и отзывы других клиентов\n• Бронирование прямо в приложении, без звонков\n• Чат с исполнителем до и после записи\n• Избранное и история записей в одном месте\n\nСПЕЦИАЛИСТАМ И ЗАВЕДЕНИЯМ\n• Анкета с услугами и ценами\n• Заявки, которые вы подтверждаете, отклоняете или закрываете\n• Портфолио, показывающее вашу работу\n• Уведомление о каждой новой заявке\n\nРегистрация по email с шестизначным кодом подтверждения. После неё выберите, как пользуетесь Taptym: как клиент, как самостоятельный специалист или как заведение.\n\nРаботает по всему Казахстану: Алматы, Астана, Шымкент, Караганда, Актобе и другие города."
+    }
+  }
+}
