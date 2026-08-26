@@ -72,12 +72,17 @@ jobs:
       - name: Проверить, что приложение не упало
         run: |
           set -euo pipefail
-          if xcrun simctl spawn "$SIM_UDID" launchctl list | grep -q "$BUNDLE_ID"; then
+          # launchctl внутри симулятора показывает приложение не всегда и даёт
+          # ложные срабатывания. Процесс симулятора виден с хоста по имени
+          # исполняемого файла из бандла — это надёжнее.
+          EXEC=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP_PATH/Info.plist")
+          echo "Исполняемый файл: $EXEC"
+          if pgrep -x "$EXEC" > /dev/null; then
             echo "Приложение живо через 30 секунд после запуска."
           else
-            echo "::error::Процесс $BUNDLE_ID не найден — приложение упало на старте."
+            echo "::error::Процесс $EXEC не найден — приложение упало на старте."
             xcrun simctl spawn "$SIM_UDID" log show --last 3m --style compact \
-              --predicate 'processImagePath CONTAINS "serviceapp"' | tail -100 || true
+              --predicate "processImagePath CONTAINS \"$EXEC\"" | tail -100 || true
             exit 1
           fi
 
