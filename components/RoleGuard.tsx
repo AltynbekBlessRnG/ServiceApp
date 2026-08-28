@@ -14,9 +14,12 @@ export function RoleGuard({
   requireAdmin?: boolean;
   children: React.ReactNode;
 }) {
-  const { user, role, isAdmin, isBanned, isLoading } = useAuth();
+  const { user, role, isAdmin, isBanned, isLoading, isAuthorizationLoading } = useAuth();
 
-  if (isLoading) {
+  // Ждём не только сессию, но и права: пока они грузятся, role и isAdmin пусты,
+  // и любой редирект по ним отправит человека не туда — админа с админского
+  // экрана, а обычного пользователя на давно пройденный выбор роли.
+  if (isLoading || isAuthorizationLoading) {
     return <View style={styles.center}><ActivityIndicator color="#F0B90B" /></View>;
   }
   if (!user) return <Redirect href="/(auth)/login" />;
