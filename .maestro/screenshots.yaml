@@ -97,11 +97,12 @@ appId: com.adiya.serviceapp
     timeout: 10000
 - takeScreenshot: shots/08-specialist
 
-- back
-- back
-- back
+# iOS не отдаёт Maestro системного «назад», а свайп по краю здесь не работает,
+# поэтому возвращаемся на главную перезапуском: состояние не сбрасывается,
+# сессия остаётся, экран открывается корневой.
+- launchApp
 - waitForAnimationToEnd:
-    timeout: 8000
+    timeout: 10000
 
 - tapOn:
     text: ".*Заведения.*"

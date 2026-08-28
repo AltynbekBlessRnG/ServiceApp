@@ -221,12 +221,21 @@ export default function SpecialistDetailScreen() {
                     </View>
                     <View style={[styles.statDivider, { backgroundColor: '#2B3139' }]} />
                     <View style={styles.statItem}>
-                        <Text style={[styles.statValue, { color: '#fff' }]}>⭐ {Number(specialist?.avg_rating || 0).toFixed(1)}</Text>
+                        <Text style={[styles.statValue, { color: '#fff' }]}>
+                          {/* У нового мастера отзывов ещё нет, и «⭐ 0.0» читается как плохая оценка. */}
+                          {Number(specialist?.review_count ?? 0) > 0
+                            ? `⭐ ${Number(specialist?.avg_rating ?? 0).toFixed(1)}`
+                            : 'Новый'}
+                        </Text>
                         <Text style={styles.statLabel}>Рейтинг</Text>
                     </View>
                     <View style={[styles.statDivider, { backgroundColor: '#2B3139' }]} />
                     <View style={styles.statItem}>
-                        <Text style={[styles.statValue, { color: '#fff' }]}>{specialist?.price_start ?? initialPrice} ₸</Text>
+                        <Text style={[styles.statValue, { color: '#fff' }]}>
+                          {specialist?.price_start ?? specialist?.price_from ?? initialPrice
+                            ? `${Number(specialist?.price_start ?? specialist?.price_from ?? initialPrice).toLocaleString('ru-RU')} ₸`
+                            : 'По запросу'}
+                        </Text>
                         <Text style={styles.statLabel}>Цена от</Text>
                     </View>
                 </View>
