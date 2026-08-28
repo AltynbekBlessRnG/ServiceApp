@@ -86,8 +86,10 @@ appId: com.adiya.serviceapp
 - tapOn:
     text: ".*(Мастера маникюра|Визажисты|Массажисты).*"
     optional: true
+# Список исполнителей грузится запросом к базе, а не только анимацией, поэтому
+# ждём дольше: на прошлом прогоне кадр снялся до того, как экран сменился.
 - waitForAnimationToEnd:
-    timeout: 10000
+    timeout: 15000
 - takeScreenshot: shots/07-results
 
 - tapOn:

@@ -113,3 +113,41 @@ BEGIN
 
   RAISE NOTICE 'Создано демонстрационных профилей: %', seq;
 END $$;
+
+-- Раздел «Алаколь» на главной фильтрует заведения по зонам Акши, Коктума и
+-- Ушарал. Без них хаб открывается надписью «Пока нет объектов в этой зоне».
+DO $$
+DECLARE
+  v_zone TEXT[] := ARRAY['akshi','koktuma','usharal'];
+  v_zone_ru TEXT[] := ARRAY['Акши','Коктума','Ушарал'];
+  v_brand TEXT[] := ARRAY['Жагалау','Алтын Кум','Тұмар','Балхаш','Сая','Аққу'];
+  v_svc INT[] := ARRAY[55,54,53,52,55,54];
+  i INT; z INT; v_uid UUID; v_email TEXT; v_name TEXT; v_price INT;
+BEGIN
+  FOR i IN 1..6 LOOP
+    z := 1 + ((i - 1) % 3);
+    v_uid := gen_random_uuid();
+    v_email := format('demo.alakol.%s@example.com', i);
+    v_name := v_brand[i] || ' ' || v_zone_ru[z];
+    v_price := 12000 + i * 3000;
+    INSERT INTO auth.users (id, instance_id, aud, role, email, email_confirmed_at,
+                            created_at, updated_at, raw_app_meta_data, raw_user_meta_data)
+    VALUES (v_uid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+            v_email, NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}'::jsonb,
+            jsonb_build_object('full_name', v_name, 'city', v_zone_ru[z]));
+    UPDATE public.profiles SET full_name = v_name, city = v_zone_ru[z], role = 'venue' WHERE id = v_uid;
+    INSERT INTO public.venue_profiles (id, description, address, capacity, price_from,
+                                       location_zone, distance_to_beach_m,
+                                       has_wifi, has_parking, has_meals, family_friendly, pet_friendly)
+    VALUES (v_uid,
+            format('База отдыха на Алаколе, зона %s. Демонстрационный профиль Taptym: каталог наполняется, реальные объекты подключаются.', v_zone_ru[z]),
+            v_zone_ru[z], 20 + i * 10, v_price, v_zone[z], 50 + i * 60,
+            i % 2 = 0, true, i % 2 = 1, true, i % 3 = 0)
+    ON CONFLICT (id) DO NOTHING;
+    INSERT INTO public.provider_verifications (provider_id, status, reviewed_at, review_note)
+    VALUES (v_uid, 'approved', NOW(), 'Демонстрационный профиль каталога')
+    ON CONFLICT (provider_id) DO UPDATE SET status = 'approved', reviewed_at = NOW();
+    INSERT INTO public.provider_services (provider_id, service_id, price_from)
+    VALUES (v_uid, v_svc[i], v_price) ON CONFLICT DO NOTHING;
+  END LOOP;
+END $$;
