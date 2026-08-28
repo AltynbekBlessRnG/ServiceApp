@@ -9,6 +9,7 @@ type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isAuthorizationLoading: boolean;
   role: AppRole;
   isAdmin: boolean;
   isBanned: boolean;
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
   isLoading: true,
+  isAuthorizationLoading: true,
   role: null,
   isAdmin: false,
   isBanned: false,
@@ -37,6 +39,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
   const [providerVerificationStatus, setProviderVerificationStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
+  // Роль приезжает отдельным запросом уже после того, как сессия готова, поэтому
+  // до его завершения role === null неотличим от «роль ещё не выбрана».
+  // Запоминаем, для кого права реально загружены, чтобы никто не принял
+  // промежуточное состояние за нового пользователя без роли.
+  const [authorizedUserId, setAuthorizedUserId] = useState<string | null>(null);
 
   async function loadAuthorization(userId?: string) {
     if (!userId) {
@@ -44,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAdmin(false);
       setIsBanned(false);
       setProviderVerificationStatus(null);
+      setAuthorizedUserId(null);
       return;
     }
     const [{ data: profile, error }, { data: admin }, { data: verification }] = await Promise.all([
@@ -56,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsBanned(Boolean(profile?.is_banned));
     setIsAdmin(Boolean(admin));
     setProviderVerificationStatus(verification?.status ?? null);
+    setAuthorizedUserId(userId);
   }
 
   async function refreshAuthorization() {
@@ -149,6 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: session?.user ?? null,
       isAuthenticated: !!session,
       isLoading,
+      isAuthorizationLoading: session !== null && authorizedUserId !== session.user.id,
       role,
       isAdmin,
       isBanned,

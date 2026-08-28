@@ -26,6 +26,18 @@ export default function RoleSelectScreen() {
         p_city: userCity,
       });
 
+      // Роль уже выбрана раньше — экран показан зря, уводим человека домой
+      // вместо тупика с текстом ошибки из базы.
+      if (error && error.message?.includes('role_already_selected')) {
+        await refreshAuthorization();
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+        router.replace(resolveHomeRoute((profile?.role as typeof role) ?? role));
+        return;
+      }
       if (error) throw error;
       await refreshAuthorization();
       router.replace(resolveHomeRoute(role));

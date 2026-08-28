@@ -50,6 +50,14 @@ appId: com.adiya.serviceapp
     text: "Allow|Разрешить|OK"
     optional: true
 
+# iOS сам предлагает сохранить пароль в связке ключей и накрывает этим
+# диалогом весь экран, а значит и все кадры после входа.
+- tapOn:
+    text: "Not Now|Не сейчас"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
 - waitForAnimationToEnd:
     timeout: 20000
 - takeScreenshot: shots/05-after-login

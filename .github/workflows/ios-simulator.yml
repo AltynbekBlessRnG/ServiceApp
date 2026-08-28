@@ -110,10 +110,12 @@ jobs:
           find "$HOME/.maestro" "$PWD/maestro-logs" "$PWD" -type f -name '*.png' \
             -newer artifact/app.tar.gz 2>/dev/null \
             | grep -v -e "^$PWD/shots/" -e "^$PWD/artifact/" \
-            | tee found.txt
+            | sort -u | tee found.txt
           while read -r f; do
             [ -f "$f" ] || continue
-            cp -n "$f" "shots/$(basename "$f")"
+            # cp -n на macOS возвращает 1, когда файл уже есть, а шаг идёт
+            # под `bash -e` — без -f один повтор ронял бы весь сбор.
+            cp -f "$f" "shots/$(basename "$f")"
           done < found.txt
           echo "Итого в shots/:"
           ls -1 shots/

@@ -8,7 +8,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { signOutSecurely } from '../lib/auth-actions';
 
 export default function Index() {
-  const { session, isLoading, role, isBanned } = useAuth();
+  const { session, isLoading, isAuthorizationLoading, role, isBanned } = useAuth();
   const router = useRouter();
   const [status, setStatus] = useState('Инициализация...');
   const [showReset, setShowReset] = useState(false);
@@ -50,8 +50,17 @@ export default function Index() {
       return;
     }
 
+    // Права грузятся отдельным запросом: пока он не завершился, роль пуста и у
+    // того, кто её давно выбрал. Уйти на выбор роли в этот момент — значит
+    // упереться в `role_already_selected`, потому что set_initial_role меняет
+    // только роль, которая ещё не задана.
+    if (isAuthorizationLoading) {
+      setStatus('Синхронизация профиля...');
+      return;
+    }
+
     checkRole();
-  }, [checkRole, isLoading, router, session]);
+  }, [checkRole, isAuthorizationLoading, isLoading, router, session]);
 
   return (
     <View
