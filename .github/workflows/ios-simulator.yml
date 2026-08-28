@@ -99,6 +99,25 @@ jobs:
           # debug-output сохраняет иерархию экрана, если что-то не нашлось.
           maestro test .maestro/screenshots.yaml --debug-output "$PWD/maestro-logs"
 
+      - name: Забрать кадры Maestro
+        if: always()
+        run: |
+          set -uo pipefail
+          # Maestro кладёт кадры не в рабочий каталог, а рядом со своими логами,
+          # и путь зависит от версии. Поэтому не угадываем его, а забираем все
+          # PNG, появившиеся после установки сборки, кроме уже снятых нами.
+          echo "Ищем кадры, созданные Maestro:"
+          find "$HOME/.maestro" "$PWD/maestro-logs" "$PWD" -type f -name '*.png' \
+            -newer artifact/app.tar.gz 2>/dev/null \
+            | grep -v -e "^$PWD/shots/" -e "^$PWD/artifact/" \
+            | tee found.txt
+          while read -r f; do
+            [ -f "$f" ] || continue
+            cp -n "$f" "shots/$(basename "$f")"
+          done < found.txt
+          echo "Итого в shots/:"
+          ls -1 shots/
+
       - name: Собрать снимки
         if: always()
         uses: actions/upload-artifact@v4
