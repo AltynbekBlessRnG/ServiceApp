@@ -9,6 +9,10 @@
 #
 # Переходы делаются нажатием на видимый текст, а не по вкладкам: подписи у
 # вкладок отключены, и попасть в иконку координатами получается не всегда.
+#
+# Подписи обёрнуты в .*: Maestro сравнивает text с целой строкой доступности
+# элемента, а карточка категории склеивает заголовок с перечнем услуг под ним,
+# поэтому точное совпадение по заголовку ничего не находит.
 
 appId: com.adiya.serviceapp
 ---
@@ -26,11 +30,18 @@ appId: com.adiya.serviceapp
 - takeScreenshot: shots/02-onboarding-2
 
 - tapOn:
-    text: "Пропустить"
+    text: "Далее"
     optional: true
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: shots/03-login
+- takeScreenshot: shots/03-onboarding-3
+
+- tapOn:
+    text: "Пропустить|Начать|Поехали"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: shots/04-login
 
 - tapOn:
     id: "email-input"
@@ -63,61 +74,51 @@ appId: com.adiya.serviceapp
     optional: true
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: shots/04-home
+- takeScreenshot: shots/05-home
 
 - tapOn:
-    text: "Красота и здоровье"
+    text: ".*Красота и здоровье.*"
     optional: true
 - waitForAnimationToEnd:
     timeout: 8000
-- takeScreenshot: shots/05-subcategories
+- takeScreenshot: shots/06-subcategories
 
 - tapOn:
-    text: "Мастера маникюра|Визажисты|Массажисты"
+    text: ".*(Мастера маникюра|Визажисты|Массажисты).*"
     optional: true
 - waitForAnimationToEnd:
     timeout: 10000
-- takeScreenshot: shots/06-results
-
-- back
-- back
-- waitForAnimationToEnd:
-    timeout: 8000
+- takeScreenshot: shots/07-results
 
 - tapOn:
-    text: "Заведения"
-    optional: true
-- waitForAnimationToEnd:
-    timeout: 8000
-- takeScreenshot: shots/07-venues
-
-- tapOn:
-    text: "АЛАКОЛЬ 2026"
+    text: ".*Демо Специалист.*"
     optional: true
 - waitForAnimationToEnd:
     timeout: 10000
-- takeScreenshot: shots/08-alakol
+- takeScreenshot: shots/08-specialist
+
+- back
+- back
+- back
+- waitForAnimationToEnd:
+    timeout: 8000
+
+- tapOn:
+    text: ".*Заведения.*"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: shots/09-venues
+
+- tapOn:
+    text: ".*АЛАКОЛЬ 2026.*"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: shots/10-alakol
 - back
 - waitForAnimationToEnd:
     timeout: 5000
 
-# Таб-бар: пять иконок без подписей. Высота панели — 60pt плюс нижний
-# отступ, то есть иконки лежат примерно на 93% высоты экрана, а не на 96%,
-# где начинается индикатор home.
-- tapOn:
-    point: "50%,93%"
-- waitForAnimationToEnd:
-    timeout: 8000
-- takeScreenshot: shots/09-orders
-
-- tapOn:
-    point: "70%,93%"
-- waitForAnimationToEnd:
-    timeout: 8000
-- takeScreenshot: shots/10-messages
-
-- tapOn:
-    point: "30%,93%"
-- waitForAnimationToEnd:
-    timeout: 8000
-- takeScreenshot: shots/11-reels
+# Вкладки «Брони», «Сообщения» и лента у демо-аккаунта пустые, для витрины
+# они не годятся, поэтому сценарий на них не заходит.
