@@ -50,15 +50,32 @@
           "backgroundColor": "#0B0E11"
         }
       ],
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Приложению Taptym нужен доступ к вашей геолокации для поиска специалистов и заведений поблизости."
+          "locationWhenInUsePermission": "Taptym показывает мастеров и заведения рядом с вами и сортирует список по расстоянию — например, чтобы барбер в Алматы оказался выше барбера в Астане. Геопозиция передаётся только в поисковый запрос и нигде не сохраняется. Без доступа поиск работает, просто без сортировки по близости.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
         }
       ],
       "expo-notifications",
-      "@sentry/react-native"
+      "@sentry/react-native",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Taptym открывает фото, чтобы вы могли поставить аватар профиля и добавить снимки своих работ в портфолио — например, фотографии маникюра, которые увидят клиенты. Приложение читает только те файлы, которые вы выбрали сами.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
