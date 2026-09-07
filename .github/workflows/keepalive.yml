@@ -1,0 +1,31 @@
+name: Keepalive
+
+# Организация на бесплатном тарифе Supabase, а он усыпляет проект после 7 дней
+# без единого обращения. Разбудить его можно только руками из панели, и всё это
+# время приложение у всех — включая проверяющего Apple — просто не работает.
+# Один запрос в сутки сбрасывает этот таймер с семикратным запасом.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Прочитать строку из базы
+        env:
+          # Публикуемый ключ: он и так уезжает внутри сборки приложения.
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+        run: |
+          status=$(curl -sS -o response.json -w '%{http_code}' \
+            "$SUPABASE_URL/rest/v1/service_categories?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY")
+          echo "HTTP $status"
+          cat response.json
+          echo
+          # Пинг, который молча вернул ошибку, бесполезен: пусть падает громко.
+          test "$status" = "200"
