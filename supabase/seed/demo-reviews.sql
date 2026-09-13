@@ -18,6 +18,10 @@
 --
 -- Удаление: см. demo-catalog-down.sql. Брони и отзывы уходят каскадом вместе
 -- с учётными записями demo.client.%@example.com.
+--
+-- Файл можно запускать повторно: клиенты создаются, только если их ещё нет, а
+-- отзывы получают только исполнители без единого отзыва — так новые профили
+-- из demo-catalog-expand.sql получают свои, а старым не добавляются лишние.
 
 -- 1. Авторы отзывов. Своих клиентов в базе было двое, а отзыв от одного и того
 --    же человека на всю витрину выглядит хуже, чем его отсутствие.
@@ -31,6 +35,8 @@ DECLARE
   i INT; v_uid UUID; v_name TEXT; v_city_n TEXT;
 BEGIN
   FOR i IN 0..47 LOOP
+    CONTINUE WHEN EXISTS (SELECT 1 FROM auth.users
+                          WHERE email = format('demo.client.%s@example.com', i + 1));
     v_uid := gen_random_uuid();
     v_city_n := v_city[1 + (i % 5)];
     v_name := CASE WHEN i % 2 = 0
@@ -77,6 +83,7 @@ BEGIN
     JOIN public.services s ON s.id = ps.service_id
     JOIN public.service_categories c ON c.id = s.category_id
     WHERE p.role IN ('specialist','venue')
+      AND NOT EXISTS (SELECT 1 FROM public.reviews rv WHERE rv.target_id = p.id)
     ORDER BY p.id, ps.service_id
   LOOP
     v_pos := CASE r.cat
