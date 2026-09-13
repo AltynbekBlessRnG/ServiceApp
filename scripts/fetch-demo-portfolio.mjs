@@ -18,6 +18,7 @@
 // Ключ читается из PEXELS_API_KEY и в сборку приложения не попадает.
 // Использование: node scripts/fetch-demo-portfolio.mjs demo/portfolio
 
+import { Buffer } from 'node:buffer';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -68,7 +69,10 @@ const QUERIES = {
   karaoke: 'karaoke microphone party', nightclubs: 'nightclub dancing lights',
 };
 
-const PER_SERVICE = 3;
+// Сколько снимков держать на услугу. Профилей одной услуги в каталоге шесть,
+// и каждый получает свою тройку из этого пула со сдвигом, поэтому пул больше
+// тройки: иначе у всех мастеров маникюра было бы одно и то же портфолио.
+const PER_SERVICE = Number(process.env.PORTFOLIO_PER_SERVICE ?? 9);
 const EDGE = 640;
 const KEY = process.env.PEXELS_API_KEY;
 if (!KEY) {
@@ -94,7 +98,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function search(query) {
   const url = 'https://api.pexels.com/v1/search'
-    + `?query=${encodeURIComponent(query)}&per_page=20&orientation=square`;
+    + `?query=${encodeURIComponent(query)}&per_page=40&orientation=square`;
   const response = await fetch(url, { headers: { Authorization: KEY } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return (await response.json()).photos ?? [];
