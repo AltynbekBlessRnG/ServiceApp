@@ -122,8 +122,10 @@ jobs:
           # и путь зависит от версии. Поэтому не угадываем его, а забираем все
           # PNG, появившиеся после установки сборки, кроме уже снятых нами.
           echo "Ищем кадры, созданные Maestro:"
-          find "$HOME/.maestro" "$PWD/maestro-logs" "$PWD" -type f -name '*.png' \
-            -newer artifact/app.tar.gz 2>/dev/null \
+          # Каталога логов может не быть: в режиме проверки съёмка не запускается.
+          # find на несуществующий путь возвращает 1 и под pipefail ронял шаг.
+          { find "$HOME/.maestro" "$PWD/maestro-logs" "$PWD/maestro-check-logs" "$PWD" -type f -name '*.png' \
+            -newer artifact/app.tar.gz 2>/dev/null || true; } \
             | grep -v -e "^$PWD/shots/" -e "^$PWD/artifact/" \
             | sort -u | tee found.txt
           while read -r f; do
@@ -145,6 +147,9 @@ jobs:
             maestro-logs/
             maestro-check-logs/
           if-no-files-found: warn
+          # Maestro складывает скриншоты и иерархию экрана в .maestro внутри
+          # каталога логов; без этого флага upload-artifact их молча пропускает.
+          include-hidden-files: true
           retention-days: 30
 
       - name: Итог

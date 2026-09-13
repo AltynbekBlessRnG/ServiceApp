@@ -91,7 +91,7 @@ export default function SubcategoryScreen() {
           refreshing={isLoading}
           onRefresh={refetch}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => openService(item)}>
+            <TouchableOpacity testID={`service-${item.slug}`} style={styles.card} activeOpacity={0.7} onPress={() => openService(item)}>
               <View style={styles.cardIconBox}>
                 <Icon name={item.icon || 'map-pin'} type="feather" size={26} color="#F0B90B" />
               </View>

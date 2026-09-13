@@ -10,6 +10,9 @@
 #
 # В отличие от screenshots.yaml, здесь нужны именно проверки: сценарий обязан
 # упасть, если что-то из этого вернулось.
+#
+# Плитки услуг ищем по testID, а не по подписи: iOS склеивает название со
+# значком иконки в одну строку доступности, и точный текст не находится.
 
 appId: com.adiya.serviceapp
 ---
@@ -53,9 +56,11 @@ appId: com.adiya.serviceapp
 # Красота → маникюр: список не пустой.
 - tapOn: ".*Красота и здоровье.*"
 - extendedWaitUntil:
-    visible: "Мастера маникюра"
+    visible:
+      id: "service-nail-artists"
     timeout: 15000
-- tapOn: "Мастера маникюра"
+- tapOn:
+    id: "service-nail-artists"
 - extendedWaitUntil:
     visible: ".*Красота и здоровье · .*"
     timeout: 20000
@@ -67,11 +72,13 @@ appId: com.adiya.serviceapp
 - waitForAnimationToEnd:
     timeout: 5000
 - assertNotVisible: ".*АЛАКОЛЬ 2026.*"
-- assertVisible: "Визажисты"
+- assertVisible:
+    id: "service-makeup-artists"
 - takeScreenshot: shots/check-02-back-to-subcategories
 
 # Соседняя подкатегория показывает своих, а не маникюр.
-- tapOn: "Визажисты"
+- tapOn:
+    id: "service-makeup-artists"
 - extendedWaitUntil:
     visible: ".*Красота и здоровье · .*"
     timeout: 20000
@@ -91,9 +98,11 @@ appId: com.adiya.serviceapp
 # Другая категория после маникюра не пустая.
 - tapOn: ".*Автоуслуги.*"
 - extendedWaitUntil:
-    visible: "Автомеханики"
+    visible:
+      id: "service-mechanics"
     timeout: 15000
-- tapOn: "Автомеханики"
+- tapOn:
+    id: "service-mechanics"
 - extendedWaitUntil:
     visible: ".*Автоуслуги · .*"
     timeout: 20000
