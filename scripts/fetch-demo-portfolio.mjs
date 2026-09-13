@@ -72,7 +72,51 @@ const QUERIES = {
 // Сколько снимков держать на услугу. Профилей одной услуги в каталоге шесть,
 // и каждый получает свою тройку из этого пула со сдвигом, поэтому пул больше
 // тройки: иначе у всех мастеров маникюра было бы одно и то же портфолио.
-const PER_SERVICE = Number(process.env.PORTFOLIO_PER_SERVICE ?? 9);
+// Шести хватает, чтобы у каждого профиля была своя обложка.
+// Первые результаты поиска почти всегда по теме, а к двадцатому Pexels уже
+// отдаёт бухгалтеру небоскрёбы, а банкетному залу — бильярдные шары. Поэтому
+// снимок берём, только если в его описании (alt) есть слово по теме услуги.
+// По умолчанию слова берутся из самого запроса; там, где запрос состоит из
+// общих слов, список задан вручную.
+const STOPWORDS = new Set(['service', 'room', 'work', 'working', 'home', 'office', 'interior',
+  'table', 'shop', 'center', 'together', 'desk', 'with', 'team', 'group', 'meeting', 'people',
+  'business', 'students', 'student', 'studying', 'on', 'the', 'and', 'man', 'woman', 'worker']);
+
+const KEYWORDS = {
+  accounting: /account|tax|financ|invoice|calculat|bookkeep|budget|receipt|spreadsheet/,
+  analytics: /chart|graph|data|analy|statistic|report|dashboard|spreadsheet/,
+  'appliance-repair': /repair|washing machine|appliance|fridge|refrigerator|technician|fix/,
+  'auto-electricians': /car|engine|battery|vehicle|mechanic|hood|jumper/,
+  backend: /code|coding|program|developer|server|laptop|computer|software/,
+  frontend: /code|coding|program|developer|web|laptop|computer|screen/,
+  banquet: /banquet|wedding|table setting|dinner|reception|hall|dining|celebrat/,
+  'business-registration': /document|contract|sign|paperwork|form|agreement|stamp|notary/,
+  notaries: /document|contract|sign|paperwork|agreement|stamp|notary|pen/,
+  'law-firms': /law|lawyer|legal|justice|court|attorney|contract|document|gavel/,
+  lawyers: /law|lawyer|legal|justice|court|attorney|contract|document|gavel/,
+  advocates: /law|lawyer|legal|justice|court|attorney|gavel|judge/,
+  installers: /install|mount|drill|tv|air condition|window|tool|worker|technician/,
+  massage: /massage|spa|therap|back|relax/,
+  marketing: /marketing|strategy|brainstorm|presentation|chart|laptop|planning|office/,
+  'language-schools': /class|teach|lesson|learn|student|school|book|english|language/,
+  mechanics: /car|engine|mechanic|garage|repair|vehicle|wrench|auto/,
+  consulting: /meeting|consult|discuss|business|laptop|office|presentation|handshake/,
+  smm: /social media|phone|smartphone|content|camera|influencer|laptop|instagram/,
+  design: /design|sketch|drawing|laptop|creative|tablet|color|graphic/,
+  karaoke: /karaoke|microphone|sing|party|music/,
+  nightclubs: /club|dance|dancing|party|dj|night|light/,
+  'computer-clubs': /gam|computer|esport|pc|keyboard|monitor|controller/,
+};
+
+function relevance(slug, query) {
+  if (KEYWORDS[slug]) return KEYWORDS[slug];
+  const stems = query.toLowerCase().split(/\s+/)
+    .filter((word) => word.length >= 3 && !STOPWORDS.has(word))
+    .map((word) => word.length > 5 ? word.slice(0, word.length - 2) : word);
+  return new RegExp(stems.join('|'));
+}
+
+const PER_SERVICE = Number(process.env.PORTFOLIO_PER_SERVICE ?? 6);
 const EDGE = 640;
 const KEY = process.env.PEXELS_API_KEY;
 if (!KEY) {
@@ -98,7 +142,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function search(query) {
   const url = 'https://api.pexels.com/v1/search'
-    + `?query=${encodeURIComponent(query)}&per_page=40&orientation=square`;
+    + `?query=${encodeURIComponent(query)}&per_page=80&orientation=square`;
   const response = await fetch(url, { headers: { Authorization: KEY } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return (await response.json()).photos ?? [];
@@ -120,6 +164,7 @@ for (const [slug, query] of Object.entries(QUERIES)) {
     const file = join(outDir, name);
     if (existsSync(file)) { saved += 1; continue; }
     if (used.has(photo.url)) continue;
+    if (!relevance(slug, query).test((photo.alt ?? '').toLowerCase())) continue;
     try {
       const image = await fetch(photo.src.large ?? photo.src.original);
       if (!image.ok) continue;
@@ -131,7 +176,7 @@ for (const [slug, query] of Object.entries(QUERIES)) {
         '-font', FONT, '-pointsize', '15', '-fill', '#EDEDED',
         '-gravity', 'south', '-annotate', '+0+8', credit,
         '-quality', '78', '-strip', `jpg:${file}`]);
-      manifest.push({ file: name, query, photographer: photo.photographer,
+      manifest.push({ file: name, query, alt: photo.alt ?? null, photographer: photo.photographer,
                       photographer_url: photo.photographer_url, source: photo.url });
       used.add(photo.url);
       saved += 1;

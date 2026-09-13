@@ -10,7 +10,9 @@
 // делят одну картинку, так что файлов 73, а не 184. Тот же md5 умеет считать
 // Postgres, поэтому avatar_url собирается прямо в SQL, без выгрузки имён.
 //
-// Использование: node scripts/make-demo-avatars.mjs <каталог>
+// Использование: node scripts/make-demo-avatars.mjs <каталог> [инициалы ...]
+// Без списка инициалов рисует исходные 73; со списком — только переданные,
+// например те, что появились после расширения каталога.
 
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -34,6 +36,8 @@ const INK = '#F0B90B';
 const SIZE = 256;
 
 const outDir = process.argv[2];
+const requested = process.argv.slice(3);
+const initialsToDraw = requested.length ? requested : INITIALS;
 if (!outDir) {
   console.error('Укажите каталог: node scripts/make-demo-avatars.mjs public/demo/avatars');
   process.exit(1);
@@ -41,7 +45,7 @@ if (!outDir) {
 mkdirSync(outDir, { recursive: true });
 
 const tmp = join(outDir, '.tmp.svg');
-for (const initials of INITIALS) {
+for (const initials of initialsToDraw) {
   const md5 = createHash('md5').update(initials, 'utf8').digest('hex');
   // Цвет берём из тех же байт, что и имя файла: одинаковые инициалы —
   // одинаковая карточка при любом пересоздании.
@@ -59,4 +63,4 @@ for (const initials of INITIALS) {
   execFileSync('rsvg-convert', ['-w', String(SIZE), '-h', String(SIZE), '-o', join(outDir, `${md5}.png`), tmp]);
 }
 rmSync(tmp);
-console.log(`Готово: ${INITIALS.length} монограмм в ${outDir}`);
+console.log(`Готово: ${initialsToDraw.length} монограмм в ${outDir}`);
