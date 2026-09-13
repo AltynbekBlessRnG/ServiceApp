@@ -49,6 +49,20 @@ export default function CategoryResultsScreen() {
   const [sortModalVisible, setSortModalVisible] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
+  // Этот экран — скрытая вкладка: уходя с него, он не размонтируется, и при
+  // следующем открытии useState уже не читает новые параметры. Без сброса
+  // выбранной осталась бы первая подкатегория, которую открыл пользователь:
+  // «Фотографы» показывали бы ведущих, а «Красота» спрашивала бы ведущих из
+  // красоты и приходила пустой. Сбрасываем во время рендера, а не в эффекте,
+  // чтобы запрос со старой подкатегорией не успел уйти.
+  const openedWith = `${providerType}|${categorySlug}|${serviceSlug ?? ''}`;
+  const [shownFor, setShownFor] = useState(openedWith);
+  if (shownFor !== openedWith) {
+    setShownFor(openedWith);
+    setSelectedServices(serviceSlug ? [serviceSlug] : []);
+    setSortBy('default');
+  }
+
   useEffect(() => {
     if (providerType !== 'venue') return;
     let active = true;

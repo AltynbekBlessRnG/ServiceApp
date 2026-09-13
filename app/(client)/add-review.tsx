@@ -17,9 +17,18 @@ export default function AddReviewScreen() {
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Экран — скрытая вкладка и не размонтируется между отзывами: без сброса
+  // отзыв на следующую бронь открывался бы со звёздами и текстом предыдущего.
+  const booking = Array.isArray(bookingId) ? bookingId[0] : bookingId;
+  const [formFor, setFormFor] = useState(booking);
+  if (formFor !== booking) {
+    setFormFor(booking);
+    setRating(5);
+    setComment('');
+  }
+
   async function submitReview() {
     if (!user?.id) return Alert.alert('Ошибка', 'Вы должны войти в аккаунт');
-    const booking = Array.isArray(bookingId) ? bookingId[0] : bookingId;
     const target = Array.isArray(targetId) ? targetId[0] : targetId;
     if (!booking || !target) return Alert.alert('Ошибка', 'Данные заказа не найдены');
     if (!comment.trim()) {
