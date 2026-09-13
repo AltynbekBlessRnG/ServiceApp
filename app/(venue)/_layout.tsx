@@ -10,7 +10,12 @@ export default function VenueLayout() {
 
   return (
     <RoleGuard role="venue">
-    <Tabs 
+    {/* Скрытые экраны ниже — это тоже вкладки, а не экраны стека. По умолчанию
+        «назад» из любой вкладки ведёт на первую, поэтому из списка мастеров
+        пользователь вылетал на главную мимо подкатегорий. «history» ведёт
+        назад по реальному порядку переходов. */}
+    <Tabs
+      backBehavior="history"
       screenOptions={{ 
         headerShown: false,
         tabBarStyle: { 
