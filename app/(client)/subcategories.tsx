@@ -72,7 +72,7 @@ export default function SubcategoryScreen() {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle="light-content" />
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity testID="subcategories-back" accessibilityLabel="Назад" onPress={() => router.back()} style={styles.backBtn}>
           <Icon name="arrow-left" type="feather" color="#FAFAFA" size={22} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{category?.name || 'Услуги'}</Text>

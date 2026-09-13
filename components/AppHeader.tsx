@@ -23,6 +23,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       <View style={styles.side}>
         {showBack && (
           <TouchableOpacity
+            testID="header-back"
+            accessibilityLabel="Назад"
             onPress={() => router.back()}
             style={[styles.btn, { backgroundColor: theme.colors.grey0, borderColor: theme.colors.grey1 }]}
           >

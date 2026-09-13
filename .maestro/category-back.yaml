@@ -1,0 +1,101 @@
+# Проверяет путь по каталогу, на котором владелец поймал два бага подряд.
+#
+# 1. «Назад» из списка исполнителей вёл на главную мимо подкатегорий: экраны
+#    каталога — скрытые вкладки, а у вкладок «назад» по умолчанию ведёт на
+#    первую. Отличаем подкатегории от главной по баннеру «АЛАКОЛЬ 2026»,
+#    который есть только на главной: названия услуг видны и там, и там.
+# 2. Список исполнителей запоминал первую открытую подкатегорию: вкладка не
+#    размонтируется, и useState не перечитывал параметры. После маникюра
+#    «Автомеханики» спрашивали маникюр среди автоуслуг и приходили пустыми.
+#
+# В отличие от screenshots.yaml, здесь нужны именно проверки: сценарий обязан
+# упасть, если что-то из этого вернулось.
+
+appId: com.adiya.serviceapp
+---
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn:
+    text: "Далее"
+    optional: true
+- tapOn:
+    text: "Далее"
+    optional: true
+- tapOn:
+    text: "Пропустить|Начать|Поехали"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- tapOn:
+    id: "email-input"
+- inputText: "adiyakudaibergenova8@gmail.com"
+- tapOn:
+    id: "password-input"
+- inputText: "TaptymTest2026"
+- hideKeyboard
+- tapOn: "Войти"
+- tapOn:
+    text: "Allow|Разрешить|OK"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 20000
+- tapOn:
+    text: "Not Now|Не сейчас"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*АЛАКОЛЬ 2026.*"
+    timeout: 20000
+
+# Красота → маникюр: список не пустой.
+- tapOn: ".*Красота и здоровье.*"
+- extendedWaitUntil:
+    visible: "Мастера маникюра"
+    timeout: 15000
+- tapOn: "Мастера маникюра"
+- extendedWaitUntil:
+    visible: ".*Красота и здоровье · .*"
+    timeout: 20000
+- takeScreenshot: shots/check-01-manicure
+
+# «Назад» возвращает к подкатегориям, а не на главную.
+- tapOn:
+    id: "header-back"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertNotVisible: ".*АЛАКОЛЬ 2026.*"
+- assertVisible: "Визажисты"
+- takeScreenshot: shots/check-02-back-to-subcategories
+
+# Соседняя подкатегория показывает своих, а не маникюр.
+- tapOn: "Визажисты"
+- extendedWaitUntil:
+    visible: ".*Красота и здоровье · .*"
+    timeout: 20000
+- assertNotVisible: "Никого не найдено"
+
+# Две ступени назад — главная.
+- tapOn:
+    id: "header-back"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "subcategories-back"
+- extendedWaitUntil:
+    visible: ".*АЛАКОЛЬ 2026.*"
+    timeout: 10000
+
+# Другая категория после маникюра не пустая.
+- tapOn: ".*Автоуслуги.*"
+- extendedWaitUntil:
+    visible: "Автомеханики"
+    timeout: 15000
+- tapOn: "Автомеханики"
+- extendedWaitUntil:
+    visible: ".*Автоуслуги · .*"
+    timeout: 20000
+- assertNotVisible: "Никого не найдено"
+- takeScreenshot: shots/check-03-mechanics-after-manicure

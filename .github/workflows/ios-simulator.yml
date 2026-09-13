@@ -16,6 +16,11 @@ on:
         required: false
         default: "iPhone 17 Pro Max"
         type: string
+      check:
+        description: "Проверочный сценарий из .maestro (например category-back.yaml); пусто — только съёмка"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   capture:
@@ -87,7 +92,7 @@ jobs:
           fi
 
       - name: Прогнать сценарии Maestro
-        if: hashFiles('.maestro/screenshots.yaml') != ''
+        if: inputs.check == '' && hashFiles('.maestro/screenshots.yaml') != ''
         continue-on-error: true
         run: |
           set -euo pipefail
@@ -98,6 +103,16 @@ jobs:
           # сценарии, их падение не должно лишать нас кадров.
           # debug-output сохраняет иерархию экрана, если что-то не нашлось.
           maestro test .maestro/screenshots.yaml --debug-output "$PWD/maestro-logs"
+
+      - name: Проверочный сценарий Maestro
+        if: inputs.check != ''
+        # Без continue-on-error: смысл этого шага — уронить прогон, если
+        # проверка не прошла. Съёмка выше намеренно терпит промахи.
+        run: |
+          set -euo pipefail
+          export PATH="$PATH:$HOME/.maestro/bin"
+          command -v maestro >/dev/null || { curl -Ls https://get.maestro.mobile.dev | bash; }
+          maestro test ".maestro/${{ inputs.check }}" --debug-output "$PWD/maestro-check-logs"
 
       - name: Забрать кадры Maestro
         if: always()
@@ -128,6 +143,7 @@ jobs:
           path: |
             shots/
             maestro-logs/
+            maestro-check-logs/
           if-no-files-found: warn
           retention-days: 30
 
