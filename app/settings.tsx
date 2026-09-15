@@ -11,10 +11,12 @@ import { uploadFileToSupabase } from '../lib/uploader';
 import { openLegalDocument } from '../lib/legal';
 import { signOutSecurely } from '../lib/auth-actions';
 import { removePublicStorageFiles } from '../lib/storage-cleanup';
+import { useAccountDeletion } from '../hooks/useAccountDeletion';
 import { useAuth } from '../providers/AuthProvider';
 
-const SettingItem = ({ icon, title, onPress, color, theme }: any) => (
+const SettingItem = ({ icon, title, onPress, color, theme, testID }: any) => (
   <TouchableOpacity 
+    testID={testID}
     onPress={onPress} 
     activeOpacity={0.7}
     style={[styles.itemContainer, { backgroundColor: '#1E2329', borderColor: '#2B3139' }]}
@@ -111,26 +113,13 @@ export default function SettingsScreen() {
     else Alert.alert("Успешно", "Данные профиля обновлены");
   }
 
+  const { confirmDeletion, deleting } = useAccountDeletion();
+
   async function handleSignOut() {
     await signOutSecurely();
     router.replace('/(auth)/login');
   }
 
-  const handleDeleteAccount = () => {
-    Alert.alert("Удалить аккаунт?", "Это действие необратимо.", [
-        { text: "Отмена", style: "cancel" },
-        { text: "Удалить", style: "destructive", onPress: async () => {
-            try {
-              const { error } = await supabase.functions.invoke('delete-account', { method: 'DELETE' });
-              if (error) throw error;
-              await signOutSecurely();
-              router.replace('/(auth)/login');
-            } catch (error) {
-              Alert.alert('Не удалось удалить аккаунт', error instanceof Error ? error.message : 'Попробуйте позже');
-            }
-        }}
-    ]);
-  };
 
   if (authLoading) return <View style={styles.center}><ActivityIndicator size="large" color="#F0B90B" /></View>;
 
@@ -189,7 +178,7 @@ export default function SettingsScreen() {
         <View style={[styles.section, { marginBottom: 40 }]}>
             <Text style={[styles.sectionTitle, { color: '#FF4757' }]}>ЗОНА ОПАСНОСТИ</Text>
             <SettingItem icon="log-out" title="Выйти" onPress={handleSignOut} theme={theme} />
-            <SettingItem icon="trash-2" title="Удалить аккаунт" onPress={handleDeleteAccount} color="#FF4757" theme={theme} />
+            <SettingItem icon="trash-2" title={deleting ? 'Удаляем аккаунт…' : 'Удалить аккаунт'} onPress={deleting ? undefined : confirmDeletion} color="#FF4757" theme={theme} testID="settings-delete-account" />
         </View>
 
       </ScrollView>

@@ -2,6 +2,8 @@ import { Avatar, Icon, ListItem, Text, useTheme } from '@rneui/themed';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useAccountDeletion } from '../../hooks/useAccountDeletion';
+import { signOutSecurely } from '../../lib/auth-actions';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 
@@ -9,6 +11,12 @@ export default function VenueProfileMenu() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
+  const { confirmDeletion, deleting } = useAccountDeletion();
+
+  const handleLogout = async () => {
+    await signOutSecurely();
+    router.replace('/(auth)/login');
+  };
 
   useFocusEffect(
     React.useCallback(() => {
@@ -45,6 +53,24 @@ export default function VenueProfileMenu() {
             </ListItem>
           </TouchableOpacity>
         ))}
+
+        <TouchableOpacity onPress={handleLogout}>
+          <ListItem containerStyle={[styles.listItem, { backgroundColor: theme.colors.grey0 }]}>
+            <Icon name="log-out" type="feather" color="#FF4757" />
+            <ListItem.Content><ListItem.Title style={{ fontWeight: 'bold', color: '#FF4757' }}>Выйти</ListItem.Title></ListItem.Content>
+          </ListItem>
+        </TouchableOpacity>
+
+        <TouchableOpacity testID="profile-delete-account" onPress={deleting ? undefined : confirmDeletion}>
+          <ListItem containerStyle={[styles.listItem, { backgroundColor: theme.colors.grey0 }]}>
+            <Icon name="trash-2" type="feather" color="#FF4757" />
+            <ListItem.Content>
+              <ListItem.Title style={{ fontWeight: 'bold', color: '#FF4757' }}>
+                {deleting ? 'Удаляем аккаунт…' : 'Удалить аккаунт'}
+              </ListItem.Title>
+            </ListItem.Content>
+          </ListItem>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );

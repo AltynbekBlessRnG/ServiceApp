@@ -5,6 +5,7 @@ import { ScrollView, StyleSheet, TouchableOpacity, View, Alert, ActivityIndicato
 import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
 import { signOutSecurely } from '../../lib/auth-actions';
+import { useAccountDeletion } from '../../hooks/useAccountDeletion';
 import { useAuth } from '../../providers/AuthProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -45,6 +46,8 @@ export default function SpecialistProfileScreen() {
       return () => { isActive = false; };
     }, [user])
   );
+
+  const { confirmDeletion, deleting } = useAccountDeletion();
 
   const handleLogout = () => {
       Alert.alert("Выход", "Выйти из аккаунта?", [
@@ -144,6 +147,17 @@ export default function SpecialistProfileScreen() {
             <TouchableOpacity onPress={handleLogout} style={[styles.menuItemPlain, { marginTop: 10, borderColor: '#FF4757' }]}>
                 <Icon name="log-out" type="feather" color="#FF4757" size={22} style={styles.icon} />
                 <Text style={[styles.menuTitle, { color: '#FF4757', fontWeight: 'bold' }]}>Выйти</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                testID="profile-delete-account"
+                onPress={deleting ? undefined : confirmDeletion}
+                style={[styles.menuItemPlain, { marginTop: 10, borderColor: '#FF4757' }]}
+            >
+                <Icon name="trash-2" type="feather" color="#FF4757" size={22} style={styles.icon} />
+                <Text style={[styles.menuTitle, { color: '#FF4757', fontWeight: 'bold' }]}>
+                    {deleting ? 'Удаляем аккаунт…' : 'Удалить аккаунт'}
+                </Text>
             </TouchableOpacity>
         </View>
 

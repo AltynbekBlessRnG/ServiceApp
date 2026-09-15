@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserAvatar } from '../../components/UserAvatar';
 import { supabase } from '../../lib/supabase';
 import { signOutSecurely } from '../../lib/auth-actions';
+import { useAccountDeletion } from '../../hooks/useAccountDeletion';
 import { useAuth } from '../../providers/AuthProvider';
 
 export default function ClientProfile() {
@@ -47,6 +48,8 @@ export default function ClientProfile() {
     }, [user])
   );
 
+  const { confirmDeletion, deleting } = useAccountDeletion();
+
   const handleLogout = async () => {
     Alert.alert('Выход', 'Вы уверены, что хотите выйти из аккаунта?', [
       { text: 'Отмена', style: 'cancel' },
@@ -57,8 +60,9 @@ export default function ClientProfile() {
     ]);
   };
 
-  const MenuItem = ({ icon, title, onPress, color = '#fff', isDestructive = false }: any) => (
+  const MenuItem = ({ icon, title, onPress, color = '#fff', isDestructive = false, testID }: any) => (
     <TouchableOpacity 
+      testID={testID}
       style={styles.menuItem} 
       onPress={onPress}
       activeOpacity={0.7}
@@ -143,6 +147,13 @@ export default function ClientProfile() {
                     title="Выйти из аккаунта" 
                     isDestructive 
                     onPress={handleLogout}
+                />
+                <MenuItem 
+                    icon="trash-2" 
+                    title={deleting ? 'Удаляем аккаунт…' : 'Удалить аккаунт'} 
+                    isDestructive 
+                    onPress={deleting ? undefined : confirmDeletion}
+                    testID="profile-delete-account"
                 />
             </View>
         </View>
