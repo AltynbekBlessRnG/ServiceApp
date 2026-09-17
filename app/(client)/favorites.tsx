@@ -4,6 +4,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { AppHeader } from '../../components/AppHeader';
 import { ProfileCard } from '../../components/ProfileCard';
+import { deduplicateProviders } from '../../lib/domain';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 
@@ -22,7 +23,7 @@ export default function FavoritesScreen() {
 
     if (favoriteIds.length > 0) {
       const { data } = await supabase.from('provider_search_view').select('*').in('id', favoriteIds);
-      if (data) setItems(data);
+      if (data) setItems(deduplicateProviders(data));
     } else {
       setItems([]);
     }

@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '../../components/AppHeader';
 import { ProfileCard } from '../../components/ProfileCard';
+import { deduplicateProviders } from '../../lib/domain';
 import { supabase } from '../../lib/supabase';
 
 const ZONES = [
@@ -34,7 +35,7 @@ export default function AlakolHubScreen() {
           .eq('location_zone', zone)
           .limit(ALAKOL_VENUE_CATEGORIES.length * 20);
 
-        setItems(Array.from(new Map((data || []).map((item: any) => [item.id, item])).values()));
+        setItems(deduplicateProviders(data || []));
       } else {
         const { data } = await supabase
           .from('provider_search_view')
@@ -43,7 +44,7 @@ export default function AlakolHubScreen() {
           .eq('service_area', zone)
           .limit(100);
 
-        setItems(Array.from(new Map((data || []).map((item: any) => [item.id, item])).values()));
+        setItems(deduplicateProviders(data || []));
       }
     } finally {
       setLoading(false);

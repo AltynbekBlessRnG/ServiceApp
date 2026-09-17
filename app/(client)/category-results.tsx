@@ -7,6 +7,7 @@ import { ActivityIndicator, FlatList, Modal, ScrollView, StyleSheet, TouchableOp
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '../../components/AppHeader';
 import { ProfileCard } from '../../components/ProfileCard';
+import { deduplicateProviders } from '../../lib/domain';
 import { supabase } from '../../lib/supabase';
 
 type ProviderType = 'specialist' | 'venue';
@@ -121,18 +122,11 @@ export default function CategoryResultsScreen() {
       if (failed?.error) throw failed.error;
       const data = responses.flatMap((response) => response.data || []);
 
-      const unique = new Map<string, SearchRow & { distance_km: number | null; role: ProviderType; price_start: number }>();
-      for (const raw of data as SearchRow[]) {
-        const current = unique.get(raw.id);
-        const row = {
-          ...raw,
-          role: providerType,
-          price_start: raw.price_from,
-        };
-        if (!current || row.price_from < current.price_from) unique.set(raw.id, row);
-      }
-
-      const result = [...unique.values()];
+      const result = deduplicateProviders((data as SearchRow[]).map((raw) => ({
+        ...raw,
+        role: providerType,
+        price_start: raw.price_from,
+      })));
       if (sortBy === 'price_asc') result.sort((a, b) => a.price_from - b.price_from);
       if (sortBy === 'price_desc') result.sort((a, b) => b.price_from - a.price_from);
       if (sortBy === 'distance') {

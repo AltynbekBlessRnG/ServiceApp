@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import { resolveHomeRoute } from '../lib/auth-routing';
 import { getPublicAppConfig, getRequiredEnv } from '../lib/env';
-import { canTransitionBooking, deduplicateProviders, formatPrice } from '../lib/domain';
+import { canTransitionBooking, deduplicateProviders, formatPrice, mergeIncomingMessage } from '../lib/domain';
 import { getFallbackSearchIntent } from '../lib/search-intent';
 import { EMAIL_OTP_LENGTH, getAuthErrorMessage, getRegistrationValidationError, normalizeEmail, validateRegistrationPassword } from '../lib/auth-validation';
 import { readAuthCallbackTokens } from '../lib/auth-callback';
@@ -84,9 +84,33 @@ run('allows an audited admin override without no-op transitions', () => {
 
 run('deduplicates provider cards produced by multiple services', () => {
   assert.deepEqual(deduplicateProviders([{ id: 'a', service: 'one' }, { id: 'a', service: 'two' }, { id: 'b', service: 'three' }]), [
-    { id: 'a', service: 'two' },
+    { id: 'a', service: 'one' },
     { id: 'b', service: 'three' },
   ]);
+});
+
+run('keeps the cheapest service of a provider, and a priced row over an unpriced one', () => {
+  assert.deepEqual(
+    deduplicateProviders([
+      { id: 'a', price_from: 15000 },
+      { id: 'a', price_from: 6000 },
+      { id: 'a', price_from: 12000 },
+      { id: 'b', price_from: 0 },
+      { id: 'b', price_from: 9000 },
+    ]),
+    [{ id: 'a', price_from: 6000 }, { id: 'b', price_from: 9000 }],
+  );
+});
+
+run('replaces the sender\'s optimistic message instead of showing it twice', () => {
+  const pending = { id: 'pending:1', sender_id: 'me', content: 'привет', pending: true };
+  const saved = { id: 'uuid-1', sender_id: 'me', content: 'привет' };
+  assert.deepEqual(mergeIncomingMessage([pending], saved), [saved]);
+  // Повторная доставка той же строки ничего не добавляет.
+  assert.deepEqual(mergeIncomingMessage([saved], saved), [saved]);
+  // Чужое сообщение встаёт сверху и оптимистичных строк не трогает.
+  const theirs = { id: 'uuid-2', sender_id: 'them', content: 'привет' };
+  assert.deepEqual(mergeIncomingMessage([pending], theirs), [theirs, pending]);
 });
 
 run('formats Kazakhstan tenge prices', () => {

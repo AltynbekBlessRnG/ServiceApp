@@ -13,8 +13,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserAvatar } from '../../components/UserAvatar'; // <---
+import { ChatMessage, mergeIncomingMessage } from '../../lib/domain';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
+
+type ChatRow = ChatMessage & { conversation_id: string; created_at: string };
 
 export default function PersonalChatScreen() {
   const { theme } = useTheme();
@@ -23,7 +26,7 @@ export default function PersonalChatScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<ChatRow[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [receiver, setReceiver] = useState<any>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -64,10 +67,8 @@ export default function PersonalChatScreen() {
           table: 'messages',
           filter: `conversation_id=eq.${directId}`,
         }, (payload) => {
-          const message = payload.new;
-          setMessages((current) =>
-            current.some((item) => item.id === message.id) ? current : [message, ...current],
-          );
+          const message = payload.new as ChatRow;
+          setMessages((current) => mergeIncomingMessage(current, message));
           void supabase.rpc('mark_conversation_read', { p_conversation_id: directId });
         })
         .subscribe();
@@ -84,24 +85,31 @@ export default function PersonalChatScreen() {
     const msgText = newMessage.trim();
     setNewMessage(''); 
 
-    // Оптимистичное обновление UI (сразу добавляем сообщение)
-    const optimisticMsg = {
-        id: Date.now().toString(),
+    // Оптимистичное обновление UI (сразу добавляем сообщение). Помечаем строку
+    // как pending: по этой метке её заменит настоящая, откуда бы та ни пришла —
+    // из ответа на вставку или из подписки, смотря что успеет раньше.
+    const optimisticMsg: ChatRow = {
+        id: `pending:${Date.now()}`,
         content: msgText,
         sender_id: user.id,
         conversation_id: conversationId,
         created_at: new Date().toISOString(),
+        pending: true,
     };
     setMessages(prev => [optimisticMsg, ...prev]);
 
-    const { error } = await supabase
+    const { data: saved, error } = await supabase
         .from('messages')
-        .insert({ sender_id: user.id, conversation_id: conversationId, content: msgText });
+        .insert({ sender_id: user.id, conversation_id: conversationId, content: msgText })
+        .select('*')
+        .single();
 
     if (error) {
       setMessages((current) => current.filter((message) => message.id !== optimisticMsg.id));
       setNewMessage(msgText);
+      return;
     }
+    if (saved) setMessages((current) => mergeIncomingMessage(current, saved as ChatRow));
   }
 
   const renderMessage = ({ item }: { item: any }) => {

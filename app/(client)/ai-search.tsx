@@ -6,6 +6,7 @@ import { ActivityIndicator, FlatList, Keyboard, KeyboardAvoidingView, Platform, 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProfileCard } from '../../components/ProfileCard';
 import { analyzeSearchIntent, SearchIntent } from '../../lib/gemini';
+import { deduplicateProviders } from '../../lib/domain';
 import { supabase } from '../../lib/supabase';
 
 export default function GlobalSearchScreen() {
@@ -52,7 +53,7 @@ export default function GlobalSearchScreen() {
       const { data } = await dbQuery.limit(20);
       
       if (data && data.length > 0) {
-        setResults(data);
+        setResults(deduplicateProviders(data));
       } else {
         const safeQuery = query.replace(/[^\p{L}\p{N}\s-]/gu, ' ').trim();
         if (!safeQuery) {
@@ -65,7 +66,7 @@ export default function GlobalSearchScreen() {
           .select('*')
           .or(`full_name.ilike.%${safeQuery}%,category_name.ilike.%${safeQuery}%,service_name.ilike.%${safeQuery}%`)
           .limit(20);
-        setResults(fallbackData || []);
+        setResults(deduplicateProviders(fallbackData || []));
       }
     } catch (err) {
       console.error(err);
