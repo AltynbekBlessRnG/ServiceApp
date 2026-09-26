@@ -6,6 +6,7 @@ import {
   Platform, StyleSheet, TextInput, TouchableOpacity, View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { mergeIncomingMessage } from '../../../lib/domain';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../providers/AuthProvider';
 
@@ -64,9 +65,7 @@ export default function CategoryChatScreen() {
             .eq('id', payload.new.sender_id)
             .single();
           const message: Record<string, any> = { ...payload.new, profiles: profile };
-          setMessages((current) =>
-            current.some((item) => item.id === message.id) ? current : [message, ...current],
-          );
+          setMessages((current) => mergeIncomingMessage(current, message as never));
           void supabase.rpc('mark_conversation_read', { p_conversation_id: conversation.id });
         })
         .subscribe();
@@ -94,14 +93,22 @@ export default function CategoryChatScreen() {
       created_at: new Date().toISOString(),
       is_hidden: false,
       profiles: null,
+      // Метка, по которой пришедшая настоящая строка заменит эту, а не ляжет
+      // рядом: у оптимистичной строки id временный и с UUID не совпадёт.
+      pending: true,
     };
     setMessages((current) => [optimisticMessage, ...current]);
 
-    const { error } = await supabase.from('messages').insert({
+    // Свою же строку забираем сразу: если подписка не доедет, сообщение всё
+    // равно перестанет быть временным. Автора в своих пузырях не рисуем,
+    // поэтому отсутствие profiles в ответе ничего не ломает.
+    const { data: saved, error } = await supabase.from('messages').insert({
         conversation_id: conversationId,
         sender_id: user.id,
         content
-    });
+    }).select('*').single();
+
+    if (!error && saved) setMessages((current) => mergeIncomingMessage(current, saved as never));
 
     if (error) {
       setMessages((current) => current.filter((message) => message.id !== optimisticMessage.id));
