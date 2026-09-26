@@ -19,6 +19,7 @@ import { showToast } from '../../components/AppToast';
 import { UserAvatar } from '../../components/UserAvatar';
 import { SafetyActions } from '../../components/SafetyActions';
 import { useHaptics } from '../../hooks/useHaptics';
+import { PhotoPlaceholder } from '../../components/PhotoPlaceholder';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 
@@ -192,12 +193,16 @@ export default function SpecialistDetailScreen() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         {/* HERO: Показываем картинку сразу, или placeholder */}
-        <Image 
-            source={{ uri: heroImage || 'https://via.placeholder.com/800x600/1A1625/FFFFFF?text=Taptym' }} 
-            style={styles.heroImg} 
+        {heroImage ? (
+          <Image
+            source={{ uri: heroImage }}
+            style={styles.heroImg}
             contentFit="cover"
             transition={300}
-        />
+          />
+        ) : (
+          <PhotoPlaceholder style={styles.heroImg} label="Мастер не добавил работы" />
+        )}
         
         <View style={[styles.contentContainer, { backgroundColor: theme.colors.background }]}>
             <View style={styles.headerSection}>

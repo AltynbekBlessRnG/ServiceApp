@@ -1,31 +1,32 @@
 import { Button, Text, useTheme } from '@rneui/themed';
 import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
-import { Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Dimensions, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { OnboardingArt, OnboardingArtName } from '../components/OnboardingArt';
 
 const { width } = Dimensions.get('window');
 
-const SLIDES = [
+const SLIDES: { id: string; title: string; desc: string; art: OnboardingArtName; color: string }[] = [
   {
     id: '1',
     title: 'Находи мастеров',
     desc: 'Тысячи проверенных специалистов и заведений в твоем городе. Читай отзывы и выбирай лучших.',
-    image: 'https://cdn-icons-png.flaticon.com/512/3050/3050307.png', // Можно заменить на свои иллюстрации
+    art: 'find',
     color: '#E0F2FE'
   },
   {
     id: '2',
     title: 'Онлайн запись',
     desc: 'Забудь про звонки. Выбирай удобное время в календаре и бронируй за секунду.',
-    image: 'https://cdn-icons-png.flaticon.com/512/3652/3652191.png',
+    art: 'booking',
     color: '#F3E8FF'
   },
   {
     id: '3',
     title: 'Управляй временем',
     desc: 'История записей, уведомления и чат с мастером — всё в одном приложении.',
-    image: 'https://cdn-icons-png.flaticon.com/512/2921/2921222.png',
+    art: 'time',
     color: '#DCFCE7'
   }
 ];
@@ -69,7 +70,7 @@ export default function OnboardingScreen() {
         renderItem={({ item }) => (
           <View style={{ width, alignItems: 'center', padding: 20 }}>
             <View style={[styles.imageContainer, { backgroundColor: item.color }]}>
-                <Image source={{ uri: item.image }} style={styles.image} resizeMode="contain" />
+                <OnboardingArt name={item.art} size={width * 0.5} />
             </View>
             <View style={{ marginTop: 50, alignItems: 'center' }}>
                 <Text h2 style={{ color: theme.colors.black, textAlign: 'center', fontWeight: '900' }}>
@@ -116,7 +117,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { alignItems: 'flex-end', paddingHorizontal: 20, paddingTop: 10 },
   imageContainer: { width: width * 0.8, height: width * 0.8, borderRadius: width * 0.4, justifyContent: 'center', alignItems: 'center', marginTop: 30 },
-  image: { width: '60%', height: '60%' },
   footer: { padding: 20, alignItems: 'center', paddingBottom: 40 },
   dotsRow: { flexDirection: 'row', gap: 8, marginBottom: 30 },
   dot: { height: 10, borderRadius: 5 }

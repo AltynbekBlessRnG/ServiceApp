@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showToast } from '../../components/AppToast';
 import { UserAvatar } from '../../components/UserAvatar';
 import { SafetyActions } from '../../components/SafetyActions';
+import { PhotoPlaceholder } from '../../components/PhotoPlaceholder';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 
@@ -29,9 +30,6 @@ const zoneLabelMap: Record<string, string> = {
   koktuma: 'Коктума',
   usharal: 'Ушарал',
 };
-
-const coverFallback =
-  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80';
 
 type VenueProfile = {
   id: string;
@@ -84,7 +82,7 @@ export default function VenueDetailScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const heroImage = portfolio[0]?.thumbnail_url || portfolio[0]?.file_url || coverFallback;
+  const heroImage = portfolio[0]?.thumbnail_url || portfolio[0]?.file_url || null;
 
   const amenities = useMemo(
     () =>
@@ -260,7 +258,11 @@ export default function VenueDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.hero, { paddingTop: insets.top + 16 }]}>
-          <Image source={{ uri: heroImage }} style={StyleSheet.absoluteFillObject} />
+          {heroImage ? (
+            <Image source={{ uri: heroImage }} style={StyleSheet.absoluteFillObject} />
+          ) : (
+            <PhotoPlaceholder style={StyleSheet.absoluteFillObject} label="Фото объекта скоро появится" />
+          )}
           <View style={styles.heroScrim} />
 
           <View style={styles.heroTopRow}>
@@ -363,13 +365,13 @@ export default function VenueDetailScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Галерея</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryRow}>
-                {portfolio.map((image, index) => (
-                  <Image
-                    key={image.id || index}
-                    source={{ uri: image.thumbnail_url || image.file_url || coverFallback }}
-                    style={styles.galleryImg}
-                  />
-                ))}
+                {portfolio.map((image, index) => {
+                  // Раньше пустой адрес подменялся чужой стоковой картинкой;
+                  // теперь строку без файла просто не показываем.
+                  const uri = image.thumbnail_url || image.file_url;
+                  if (!uri) return null;
+                  return <Image key={image.id || index} source={{ uri }} style={styles.galleryImg} />;
+                })}
               </ScrollView>
             </View>
           ) : null}

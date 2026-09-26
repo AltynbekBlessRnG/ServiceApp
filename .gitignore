@@ -30,3 +30,4 @@ expo-env.d.ts
 AuthKey_*.p8
 *.p8
 .asc-env
+.supabase-env
